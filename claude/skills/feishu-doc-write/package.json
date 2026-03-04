@@ -1,0 +1,15 @@
+{
+  "name": "feishu-doc-write",
+  "version": "2.0.0",
+  "description": "飞书文档写入工具 - 使用文件导入API实现",
+  "main": "skill.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["飞书", "文档", "写入"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@larksuiteoapi/node-sdk": "^1.0.0"
+  }
+}
