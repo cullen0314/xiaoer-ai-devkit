@@ -134,6 +134,27 @@ if [ -d "$SCRIPT_DIR/claude/skills" ] && [ "$(ls -A $SCRIPT_DIR/claude/skills 2>
     # 设置执行权限
     find "$CLAUDE_SKILLS_DIR" -type f -name "*.sh" -exec chmod +x {} \;
     echo "✅ 已设置脚本执行权限"
+
+    # 安装 Skills 依赖
+    echo "📦 安装 Skills 依赖..."
+    if command -v npm &> /dev/null; then
+        # 检查并安装各个子 skill 的依赖
+        for skill_dir in "$CLAUDE_SKILLS_DIR"/*; do
+            if [ -d "$skill_dir" ] && [ -f "$skill_dir/package.json" ]; then
+                skill_name=$(basename "$skill_dir")
+                echo "   📥 安装 $skill_name 依赖..."
+                rm -rf "$skill_dir/node_modules"
+                (cd "$skill_dir" && npm install --production --registry=https://registry.npmmirror.com 2>&1 | grep -v "npm WARN")
+                if [ $? -eq 0 ]; then
+                    echo "   ✅ $skill_name 依赖安装成功"
+                else
+                    echo "   ❌ $skill_name 依赖安装失败"
+                fi
+            fi
+        done
+    else
+        echo "   ⚠️  npm 未安装，跳过依赖安装"
+    fi
 else
     echo "⚠️  警告: claude/skills 目录为空或不存在"
 fi

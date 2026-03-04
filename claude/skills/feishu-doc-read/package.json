@@ -1,0 +1,21 @@
+{
+  "name": "get-feishu-wiki-as-markdown",
+  "version": "1.0.0",
+  "description": "飞书文档转Markdown Skill",
+  "main": "skill.js",
+  "scripts": {
+    "start": "node skill.js"
+  },
+  "keywords": [
+    "feishu",
+    "lark",
+    "markdown",
+    "wiki",
+    "claude-code-skill"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}
