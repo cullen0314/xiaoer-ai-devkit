@@ -39,6 +39,7 @@ cd /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit
 
 ### Commands
 - `new-branch` - 创建符合规范的 git 分支
+- `curl-debug` - 根据 curl 命令深度诊断接口问题
 
 ### Agents
 - `xe-task-executor` - 执行明确的代码任务
