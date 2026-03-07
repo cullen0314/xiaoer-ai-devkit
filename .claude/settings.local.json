@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(mysql-executor)",
+      "Bash(mysql --version)",
+      "Bash(brew info mysql)",
+      "Bash(brew search mysql)",
+      "Bash(brew install mysql-client@8.0)",
+      "Bash(export PATH=\"/usr/local/opt/mysql-client@8.0/bin:$PATH\" && mysql --version)",
+      "Bash(export PATH=\"/usr/local/opt/mysql-client@8.0/bin:$PATH\" && bash ~/.claude/skills/mysql-executor/run.sh \"select * from inventory limit 1;\")",
+      "Bash(ls -la /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/.idea/*.xml 2>/dev/null || echo \"No XML files found\")",
+      "Bash(find ~/Library/Caches/JetBrains -maxdepth 2 -type d -name \"*IntelliJ*\" 2>/dev/null | head -10)",
+      "Bash(find /Users/wangyijun/.claude/projects/-Users-wangyijun-Documents-common-project-xiaoer-ai-devkit/memory/ -type f -name \"*.md\" 2>/dev/null | head -20)",
+      "Bash(ls -la /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/.idea/*.xml 2>/dev/null | head -20)",
+      "Bash(claude /plugin marketplace add obra/superpowers-marketplace 2>&1 || echo \"Command failed, trying alternative...\")",
+      "Bash(claude plugin list 2>&1 | head -20)",
+      "Bash(open -a \"IntelliJ IDEA\" ~/.claude/plugins/installed/superpowers/skills/brainstorming/SKILL.md 2>&1)",
+      "Bash(open -a \"IntelliJ IDEA\" ~/.claude/plugins/installed/superpowers 2>&1)",
+      "Bash(ls -la ~/.claude/plugins/installed/superpowers/*.xml ~/.claude/plugins/installed/superpowers/*.md 2>/dev/null | head -10)",
+      "Bash(open -a \"IntelliJ IDEA\" /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/docs/superpowers/brainstorming-skill-中文翻译.md 2>&1)",
+      "Bash(open -a \"IntelliJ IDEA\" /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/docs/superpowers/writing-plans-skill-中文翻译.md 2>&1)",
+      "Bash(open -a \"IntelliJ IDEA\" /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/docs/superpowers/using-superpowers-skill-中文翻译.md 2>&1)",
+      "Bash(open -a \"IntelliJ IDEA\" /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/commands/xe/new-feature-workflow.md 2>&1)",
+      "Bash(open -a \"IntelliJ IDEA\" /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/tech-plan/SKILL.md 2>&1)",
+      "Bash(claude /plugin marketplace add affaan-m/everything-claude-code 2>&1)",
+      "Bash(open -n -a \"IntelliJ IDEA\" ~/.claude/plugins/installed/everything-claude-code 2>&1)",
+      "Bash(echo \"在 IDEA 中按 Cmd+Shift+O，然后输入以下路径打开：\n~/.claude/plugins/installed/everything-claude-code\")",
+      "Bash(open -a \"IntelliJ IDEA\" /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/docs/everything-claude-code/plan-command-中文翻译.md 2>&1)",
+      "Bash(open -a \"IntelliJ IDEA\" /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/docs/everything-claude-code/planner-agent-中文翻译.md 2>&1)"
+    ]
+  }
+}
