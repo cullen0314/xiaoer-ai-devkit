@@ -1,0 +1,10 @@
+{
+  "name": "memory",
+  "version": "1.0.0",
+  "description": "Claude Code 项目记忆系统，自动记录用户偏好、技术决策和功能变更，并支持搜索回顾",
+  "author": {
+    "name": "Xiaoer Team"
+  },
+  "license": "MIT",
+  "keywords": ["memory", "preferences", "decisions", "history", "search"]
+}

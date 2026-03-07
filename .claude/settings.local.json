@@ -26,7 +26,16 @@
       "Bash(open -n -a \"IntelliJ IDEA\" ~/.claude/plugins/installed/everything-claude-code 2>&1)",
       "Bash(echo \"在 IDEA 中按 Cmd+Shift+O，然后输入以下路径打开：\n~/.claude/plugins/installed/everything-claude-code\")",
       "Bash(open -a \"IntelliJ IDEA\" /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/docs/everything-claude-code/plan-command-中文翻译.md 2>&1)",
-      "Bash(open -a \"IntelliJ IDEA\" /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/docs/everything-claude-code/planner-agent-中文翻译.md 2>&1)"
+      "Bash(open -a \"IntelliJ IDEA\" /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/docs/everything-claude-code/planner-agent-中文翻译.md 2>&1)",
+      "WebSearch",
+      "Bash(open \"obsidian://open?vault=%E5%B0%8F%E4%BA%8C%E7%AC%94%E8%AE%B0/%E5%B0%8F%E4%BA%8CAI&file=Superpowers-vs-ECC-%E5%AF%B9%E6%AF%94%E5%88%86%E6%9E%90.md\" 2>&1 || open -a Obsidian \"/Users/wangyijun/Documents/xiaoer_daily/小二笔记/小二AI/Superpowers-vs-ECC-对比分析.md\" 2>&1)",
+      "Bash(open -a \"IntelliJ IDEA\" /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/commands/xe/feature-flow.md 2>&1)",
+      "Bash(open \"obsidian://open?vault=%E5%B0%8F%E4%BA%8C%E7%AC%94%E8%AE%B0/%E5%B0%8F%E4%BA%8CAI&file=Everything-Claude-Code-%E4%B8%9A%E5%8A%A1%E9%80%BB%E8%BE%91%E5%88%86%E6%9E%90.md\" 2>&1 || open -a Obsidian \"/Users/wangyijun/Documents/xiaoer_daily/小二笔记/小二AI/Everything-Claude-Code-业务逻辑分析.md\" 2>&1)",
+      "Bash(open -a \"IntelliJ IDEA\" /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/docs/everything-claude-code/agents/tdd-guide-agent-中文翻译.md 2>&1)",
+      "Bash(node claude/utils/state-manager.js list)",
+      "Bash(ls -la claude/utils/ claude/agents/xe-*.md 2>/dev/null; echo \"---\"; ls -la claude/agents/ | grep xe)",
+      "Bash(chmod +x /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/plugins/memory-plugin/scripts/memory-search.sh)",
+      "Bash(chmod +x /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/plugins/memory-plugin/scripts/memory-hook.sh)"
     ]
   }
 }
