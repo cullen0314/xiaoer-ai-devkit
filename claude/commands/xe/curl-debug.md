@@ -1,6 +1,6 @@
 ---
 description: "根据 curl 命令深度诊断接口问题"
-allowed-tools: ["Bash", "Agent"]
+allowed-tools: [Bash, Agent, Skill(mysql-executor)]
 argument-hint: "curl 命令"
 model: opus
 ---
