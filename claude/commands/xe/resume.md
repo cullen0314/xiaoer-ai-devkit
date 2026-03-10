@@ -68,7 +68,7 @@ node claude/utils/state-manager.js get "{需求名称}"
 
 | current_stage | 下一步操作 | Agent 调用 |
 |--------------|-----------|-----------|
-| `tech-plan` | 技术设计中 | Agent(xe-tech-plan) |
+| `tech-plan` | 技术设计中 | Agent(agent-xe-tech-plan) |
 | `task-list` | 任务分解中 | Agent(xe-task-list) |
 | `tdd-implementation` | TDD 开发中 | Agent(xe-tdd-implementation) |
 | `code-execution` | 代码执行中 | Agent(xe-code-execution) |
@@ -223,7 +223,7 @@ Agent 完成后，显示完成摘要：
 | 文件 | 说明 |
 |------|------|
 | `claude/utils/state-manager.js` | 状态管理工具 |
-| `claude/agents/xe-tech-plan.md` | Tech-Plan Agent |
+| `claude/agents/agent-xe-tech-plan.md` | Tech-Plan Agent |
 | `claude/agents/xe-task-list.md` | Task-List Agent |
 | `claude/agents/xe-tdd-implementation.md` | TDD Agent |
 | `claude/agents/xe-code-execution.md` | Code-Execution Agent |

@@ -90,7 +90,7 @@ memory-plugin/
 
 ### 在 Agent 中使用
 
-在 `xe-tech-plan` Agent 等场景中，可以通过 Memory Search 快速回顾项目历史：
+在 `agent-xe-tech-plan` Agent 等场景中，可以通过 Memory Search 快速回顾项目历史：
 
 ```markdown
 ### 步骤 3：探索项目上下文

@@ -1,7 +1,7 @@
 ---
-name: xe-tech-plan
+name: agent-xe-tech-plan
 description: 执行技术方案设计，生成设计文档和状态文件
-allowed-tools: [Bash, Read, Write, Edit, Glob, Grep, Skill]
+allowed-tools: Bash(java:*), Bash(mvn:*), Bash(python:*), Bash(python3:*), Bash(uv run:*), Bash(find:*), Bash(grep:*), Bash(sed:*), Bash(cut:*), Bash(head:*), Bash(ls:*), Bash(cat:*), Bash(git:*), Bash(echo:*), Bash(awk:*), Bash(mktemp:*), Bash(rm:*), Bash(mkdir:*), Read(*), Write(*), Edit(*), MultiEdit(*), Glob(*), Search(*), Task(code-task-executor), Skill(feishu-doc-read), Skill(mysql-executor), Skill(memory:memory-search)
 permissionMode: acceptEdits
 model: opus
 ---
@@ -83,7 +83,7 @@ Skill("feishu-doc-read", `--no-save ${prdUrl}`)
 ### 步骤 6：分段展示设计
 
 分段展示设计，每段后询问是否正确：
-1. 整体架构
+1. 需求背景
 2. 需求用例图
 3. 功能点分析
 4. 核心UML图(业务流转泳道图、数据流转图、核心模块实现流程图、核心功能代码时序图)，符合 **Mermaid** 语法
@@ -100,7 +100,19 @@ Skill("feishu-doc-read", `--no-save ${prdUrl}`)
 
 ### 步骤 7：编写技术设计文档
 
-保存到 `docs/{需求名称}/技术设计.md`
+根据前面已确认的设计内容，严格按照**技术设计文档模板**格式生成文档。
+
+#### 7.1 确定保存路径
+
+```bash
+# 创建目录
+mkdir -p "docs/{需求名称}"
+
+# 文档保存路径
+DOC_PATH="docs/{需求名称}/技术设计.md"
+```
+
+#### 7.2 读取模板
 
 **模板读取顺序：**
 1. 优先读取项目根目录的 `技术设计文档模板.md`（项目自定义模板）
@@ -112,10 +124,132 @@ TEMPLATE_PATH="技术设计文档模板.md"
 if [ ! -f "$TEMPLATE_PATH" ]; then
     TEMPLATE_PATH="claude/agents/技术设计文档模板.md"
 fi
+cat "$TEMPLATE_PATH"
 ```
 
+#### 7.3 文档结构与填写要求
 
-### 步骤 8：保存关键决策
+严格按照以下结构填写，**不得跳过任何章节**（如无内容可写"无"或说明原因）：
+
+---
+
+**一、需求内容**
+
+```markdown
+需求文档 PRD 地址：{实际的飞书PRD链接}
+
+## 1.1 需求背景
+[说明需求背景，现状痛点已经此需求可以解决的问题]
+
+## 1.2 需求用例图
+[使用 Mermaid 绘制用例图，展示角色与功能关系]
+```
+
+---
+
+**二、技术设计方案**
+
+```markdown
+## 2.1 功能点分析
+| 序号  | 模块  | 功能点 | 功能点描述 | 备注  |
+| --- | --- | --- | ----- | --- |
+| 1   | 模块名 | 功能点名称 | 详细描述 | 实现说明 |
+```
+> 按模块拆分，每个功能点一行
+
+## 2.2 核心UML图
+
+### 2.2.1 业务流转泳道图
+> 使用 Mermaid sequenceDiagram 语法绘制业务流程
+
+### 2.2.2 数据流转图
+> 使用 Mermaid graph LR 语法绘制数据流向
+
+### 2.2.3 核心模块实现流程图
+> 使用 Mermaid flowchart TD 语法绘制核心流程
+
+### 2.2.4 核心功能代码时序图
+> 使用 Mermaid sequenceDiagram 语法绘制时序图
+
+
+**三、数据库设计**
+
+## 3.1 数据库表结构设计
+> 使用 SQL 代码块，包含建表语句、字段注释、索引定义
+```sql
+CREATE TABLE table_name (
+    id BIGINT PRIMARY KEY COMMENT '主键',
+    ...
+) COMMENT='表说明';
+```
+
+## 3.2 数据库表数据设计
+> 使用 SQL 代码块，包含核心配置数据或字典数据
+```sql
+INSERT INTO config_table (key, value) VALUES ('config_key', 'config_value');
+```
+
+---
+
+**四、核心组件设计（如果没有相关组件，写"无"并说明原因）**
+
+## 4.1 定时任务
+> 列出所有定时任务：任务名、cron表达式、执行逻辑
+
+## 4.2 缓存设计
+> 说明缓存Key设计、过期策略、更新策略
+
+## 4.3 MQ消息设计
+> 说明消息Topic、消息结构、消费逻辑
+
+---
+
+**五、接口设计**
+
+## 5.1 前后端交互接口定义
+> 使用表格格式：接口路径 | 请求方式 | 功能描述 | 请求参数 | 响应参数
+| 接口路径 | 请求方式 | 功能描述 | 请求参数 | 响应参数 |
+|---------|---------|---------|---------|---------|
+| /api/xxx | POST | 描述 | 参数说明 | 返回说明 |
+
+## 5.2 服务端交互接口定义（RPC接口）
+> 使用表格格式，如无RPC调用则写"无"
+
+---
+
+#### 7.4 填写要点
+
+| 章节 | 关键要点 |
+|------|---------|
+| **整体架构** | 必须使用 Mermaid graph/flowchart，展示模块边界 |
+| **用例图** | 必须使用 Mermaid，明确角色和功能关系 |
+| **功能点分析** | 表格形式，按模块分组，描述清晰 |
+| **UML图** | 必须**全部使用 Mermaid 语法**，不要用图片或文字描述 |
+| **数据库设计** | 表结构必须包含字段名、类型、注释、索引 |
+| **接口设计** | 表格形式，包含完整的入参出参说明 |
+
+#### 7.5 生成文档
+
+```bash
+# 使用 Write 工具生成文档
+Write("$DOC_PATH", "{完整的Markdown内容}")
+```
+
+### 步骤 8：上传到飞书（可选）
+
+使用 `feishu-doc-write` skill 将技术设计文档上传到飞书：
+
+```bash
+bash ~/.claude/skills/feishu-doc-write/run.sh --title "{需求名称}技术设计" --file "docs/{需求名称}/技术设计.md"
+```
+
+上传成功后，将飞书文档 URL 保存到状态文件：
+
+```bash
+node claude/utils/state-manager.js decision "{requirementName}" "飞书文档URL: {返回的documentUrl}"
+```
+
+### 步骤 9：保存关键决策
 
 将技术方案中的关键决策保存到状态文件：
 
@@ -126,7 +260,7 @@ node claude/utils/state-manager.js decision "{requirementName}" "密码使用 bc
 node claude/utils/state-manager.js decision "{requirementName}" "登录失败限流 5 次/小时"
 ```
 
-### 步骤 9：标记阶段完成
+### 步骤 10：标记阶段完成
 
 更新状态文件，标记 tech-plan 阶段为完成：
 
@@ -134,7 +268,7 @@ node claude/utils/state-manager.js decision "{requirementName}" "登录失败限
 node claude/utils/state-manager.js update "{requirementName}" "tech-plan" "completed" "docs/{需求名称}/技术设计.md"
 ```
 
-### 步骤 10：输出结果
+### 步骤 11：输出结果
 
 输出以下格式：
 
@@ -143,11 +277,13 @@ node claude/utils/state-manager.js update "{requirementName}" "tech-plan" "compl
   "status": "completed",
   "requirement_name": "用户登录",
   "tech_design_doc": "docs/用户登录/技术设计.md",
+  "feishu_doc_url": "https://xxx.feishu.cn/docx/xxx",
   "state_file": "docs/用户登录/state.json",
   "decisions": [
     "使用 JWT 认证",
     "密码使用 bcrypt 加密",
-    "登录失败限流 5 次/小时"
+    "登录失败限流 5 次/小时",
+    "飞书文档URL: https://xxx.feishu.cn/docx/xxx"
   ],
   "next_stage": "task-list"
 }
@@ -179,5 +315,7 @@ node claude/utils/state-manager.js update "{requirementName}" "tech-plan" "compl
 - [ ] 需求已完全澄清
 - [ ] 技术方案已提出并获得批准
 - [ ] 设计文档已生成
+- [ ] 文档已上传到飞书（可选）
+- [ ] 飞书文档 URL 已保存到状态文件（如已上传）
 - [ ] 关键决策已保存到状态文件
 - [ ] tech-plan 阶段已标记为完成

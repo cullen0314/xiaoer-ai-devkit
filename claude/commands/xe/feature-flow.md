@@ -24,7 +24,7 @@ disable-model-invocation: true
         ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │  主会话：轻量级协调器                                           │
-│  → 调用 Agent(xe-tech-plan)    独立上下文                        │
+│  → 调用 Agent(agent-xe-tech-plan)    独立上下文                        │
 │  → 读取 state.json 确认完成                                     │
 │  → 显示摘要，等待用户确认                                       │
 └─────────────────────────────────────────────────────────────────┘
@@ -79,7 +79,7 @@ disable-model-invocation: true
 ```bash
 # 启动 tech-plan Agent
 Agent({
-  subagent_type: "xe-tech-plan",
+  subagent_type: "agent-xe-tech-plan",
   prompt: `
 PRD链接：${prdUrl}
 辅助说明：${auxInfo}
