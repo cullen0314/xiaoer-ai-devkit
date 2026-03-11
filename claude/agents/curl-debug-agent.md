@@ -15,7 +15,26 @@ permissionMode: acceptEdits
 
 ## 输入格式
 
-### 方式一：curl 命令输入
+### 方式一：curl 命令 + 辅助说明（推荐）
+
+```
+【curl命令】
+curl -X POST 'http://example.com/api/user' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer token123' \
+  -d '{"name": "test"}'
+
+【辅助说明】
+- 问题: {problem_desc} - 用户的简短问题描述
+- 预期: {expected_result} - 用户期望的结果
+- 实际: {actual_result} - 实际发生的结果
+- 环境: {environment} - 开发/测试/生产环境
+- 背景: {background} - 相关的业务上下文
+- 错误日志: {error_log} - 服务端错误日志
+- TraceID: {trace_id} - 链路追踪ID
+```
+
+### 方式二：纯 curl 命令
 
 直接提供完整的 curl 命令：
 
@@ -24,24 +43,6 @@ curl -X POST 'http://example.com/api/user' \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer token123' \
   -d '{"name": "test"}'
-```
-
-### 方式二：问题描述输入
-
-提供问题的详细描述，包括：
-
-- 请求方式、URL、Headers、Body
-- 预期结果 vs 实际结果
-- 错误信息或异常堆栈
-- 相关的业务上下文
-
-示例：
-```
-接口：POST /api/order/create
-请求参数：{"userId": 123, "productId": 456, "quantity": 1}
-预期：返回订单 ID
-实际：HTTP 500 错误，返回 "Internal Server Error"
-错误日志：NullPointerException at OrderService.createOrder
 ```
 
 ## 诊断方向
@@ -86,6 +87,23 @@ curl -X POST 'http://example.com/api/user' \
 
 ## 诊断流程
 
+### 步骤0：解析辅助说明（如果有）
+
+如果用户提供了辅助说明，优先解析这些信息：
+
+| 字段 | 用途 |
+|------|------|
+| `问题` | 快速理解用户诉求 |
+| `预期` vs `实际` | 对比差异，定位偏差点 |
+| `环境` | 了解是开发/测试/生产，影响诊断方向 |
+| `背景` | 理解业务场景，避免误判 |
+| `TraceID` | 直接查询日志定位根因 |
+
+**利用辅助说明加速诊断：**
+- 有 TraceID → 优先查询日志，直接定位异常堆栈
+- 有"预期 vs 实际" → 对比差异，快速定位偏差点
+- 有环境信息 → 判断是否为环境配置问题（如本地正常、测试失败）
+
 ### 步骤1：解析请求信息
 
 提取关键信息：
@@ -107,20 +125,61 @@ curl -X POST 'http://example.com/api/user' \
 | 500 | 服务器错误 | 查看服务端日志、异常堆栈 |
 | 502/503/504 | 依赖服务问题 | 检查下游服务状态 |
 
-### 步骤3：定位代码
+### 步骤3：智能代码定位
 
-使用以下工具定位问题代码：
+**优先使用 Command 传递的代码定位提示。**
 
+#### 3.1 利用 URL 路径推断
+
+从 URL 路径中提取关键词，缩小搜索范围：
+
+| URL 示例 | 提取关键词 | 推断文件名 |
+|----------|-----------|-----------|
+| `/api/users` | `users`, `user` | UserController, UserService |
+| `/summerfarm-wms/shelving/mission` | `shelving`, `mission` | ShelvingMissionController |
+| `/order/create` | `order` | OrderController |
+| `/warehouse/inventory/query` | `warehouse`, `inventory`, `query` | InventoryQueryController |
+
+#### 3.2 根据项目类型搜索
+
+**Spring Boot 项目：**
 ```bash
-# 搜索 Controller 路由
-Grep: "@RequestMapping\|@PostMapping\|@GetMapping"
+# 搜索 Controller（优先使用 URL 关键词）
+Grep: "@.{0,50}(Mapping|RequestMapping).*{keyword}"
+Grep: "class.*{keyword}.*Controller"
 
-# 搜索 Service 实现
-Grep: "class.*Service.*Impl"
+# 搜索 Service
+Grep: "class.*{keyword}.*Service"
+Grep: "interface.*{keyword}.*Service"
 
-# 搜索错误码定义
-Grep: "ErrorCode\|错误码"
+# 搜索错误码
+Grep: "{error_code}"
 ```
+
+**Django 项目：**
+```bash
+# 搜索 View
+Grep: "def.*{keyword}.*request"
+Grep: "@api_view.*{keyword}"
+
+# 搜索 Model
+Grep: "class.*{keyword}.*Model"
+```
+
+**Node.js 项目：**
+```bash
+# 搜索路由
+Grep: "router\\.{method}.*{keyword}"
+Grep: "app\\.{method}.*{keyword}"
+```
+
+#### 3.3 多模块项目处理
+
+如果项目包含多个模块（如 inbound/application/common）：
+- 优先搜索与 URL 路径匹配的模块
+- 搜索顺序：具体模块 → 通用模块
+
+### 步骤4：根因分析
 
 ### 步骤4：根因分析
 
@@ -131,7 +190,9 @@ Grep: "ErrorCode\|错误码"
 
 ## 输出格式
 
-### 简洁文本模式
+根据 Command 传递的 `output_format` 参数选择输出格式。
+
+### text 格式（默认）
 
 ```
 [诊断结果] HTTP 500 - NullPointerException
@@ -152,21 +213,90 @@ src/main/java/com/example/service/OrderService.java:127
 src/main/java/com/example/repository/OrderRepository.java:23
 ```
 
-### JSON 模式（可选）
+### md 格式
+
+```markdown
+# 接口诊断报告
+
+## 📋 请求信息
+| 项目 | 值 |
+|------|-----|
+| 方法 | POST |
+| URL | /summerfarm-wms/shelving/query/mission_item_pda |
+| 参数 | receivingContainer=TY99970, missionType=10 |
+
+## 📊 调用结果
+| 项目 | 值 |
+|------|-----|
+| 状态 | 失败 (400) |
+| 响应时间 | 245ms |
+| 响应 | `{"code": "4003008", "msg": "容器不存在或已被占用"}` |
+
+## 🔍 问题诊断
+### 诊断方向：参数问题
+
+### 根因分析
+1. 容器 `TY99970` 在数据库中不存在
+2. 校验逻辑：`validateContainer()` 方法检查容器状态
+
+### 解决方案
+1. 确认容器编码是否正确
+2. 检查容器是否已在其他任务中使用
+3. 使用可用容器: `TY99971`, `TY99972`
+
+## 📁 相关代码
+- `inbound/src/.../ShelvingMissionController.java:120`
+- `application/src/.../ShelvingMissionQueryServiceImpl.java`
+```
+
+### json 格式
 
 ```json
 {
-  "status_code": 500,
-  "error_type": "NullPointerException",
-  "root_cause": "订单不存在时未做空值处理",
-  "location": "OrderService.java:127",
-  "fix_suggestions": [
-    "使用 Optional.orElseThrow() 替代 get()",
-    "添加订单存在性校验"
+  "summary": {
+    "status": "failed",
+    "http_code": 400,
+    "business_code": "4003008",
+    "response_time_ms": 245,
+    "error_type": "容器不存在或已被占用"
+  },
+  "request": {
+    "method": "POST",
+    "url": "/summerfarm-wms/shelving/query/mission_item_pda",
+    "headers": {
+      "content-type": "application/json",
+      "authorization": "***REDACTED***"
+    },
+    "body": {
+      "receivingContainer": "TY99970",
+      "missionType": 10
+    }
+  },
+  "response": {
+    "code": "4003008",
+    "msg": "容器不存在或已被占用"
+  },
+  "diagnosis": {
+    "direction": "参数问题",
+    "root_cause": "容器 TY99970 在数据库中不存在",
+    "validation_method": "validateContainer()"
+  },
+  "suggestions": [
+    "确认容器编码是否正确",
+    "检查容器是否已在其他任务中使用",
+    "使用可用容器: TY99971, TY99972"
   ],
-  "related_files": [
-    "src/main/java/com/example/service/OrderService.java",
-    "src/main/java/com/example/repository/OrderRepository.java"
+  "related_code": [
+    {
+      "file": "inbound/src/.../ShelvingMissionController.java",
+      "line": 120,
+      "type": "Controller"
+    },
+    {
+      "file": "application/src/.../ShelvingMissionQueryServiceImpl.java",
+      "line": null,
+      "type": "Service"
+    }
   ]
 }
 ```
