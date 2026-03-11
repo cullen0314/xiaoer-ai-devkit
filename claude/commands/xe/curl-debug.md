@@ -1,4 +1,5 @@
 ---
+name: curl-debug
 description: "根据 curl 命令深度诊断接口问题，支持辅助说明、智能代码定位、多种输出格式"
 allowed-tools: [Bash, Agent, Skill(mysql-executor)]
 argument-hint: "curl 命令 [辅助说明] [--format=text|md|json]"
