@@ -32,7 +32,7 @@ mysql-executor (Skill)
 | 文件路径 | 说明 |
 |----------|------|
 | `claude/commands/xe/curl-debug.md` | 命令入口 |
-| `claude/agents/curl-debug-agent.md` | 诊断逻辑 Agent |
+| `claude/agents/agent-curl-debug.md` | 诊断逻辑 Agent |
 
 ## curl 解析逻辑
 

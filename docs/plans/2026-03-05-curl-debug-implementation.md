@@ -64,7 +64,7 @@ model: opus
 
 ### 步骤4：调用 Agent 执行深度诊断
 
-使用 Agent 工具调用 `xe:curl-debug-agent`，传入：
+使用 Agent 工具调用 `xe:agent-curl-debug`，传入：
 - 解析后的请求信息
 - 接口响应
 - 用户选择的诊断方向
@@ -109,16 +109,16 @@ git commit -m "feat: add curl-debug command"
 
 ---
 
-## Task 2: 创建 curl-debug-agent Agent 文件
+## Task 2: 创建 agent-curl-debug Agent 文件
 
 **Files:**
-- Create: `claude/agents/curl-debug-agent.md`
+- Create: `claude/agents/agent-curl-debug.md`
 
 **Step 1: 创建 Agent 文件**
 
 ```markdown
 ---
-name: xe:curl-debug-agent
+name: xe:agent-curl-debug
 description: 深度诊断接口问题的 Agent
 allowed-tools: [Read, Grep, Glob, Bash, Skill]
 model: opus
@@ -210,7 +210,7 @@ Controller: inbound/src/.../ShelvingMissionController.java:120
 **Step 2: 验证 Agent 文件创建**
 
 ```bash
-cat claude/agents/curl-debug-agent.md | head -30
+cat claude/agents/agent-curl-debug.md | head -30
 ```
 
 Expected: 显示文件内容前 30 行
@@ -218,8 +218,8 @@ Expected: 显示文件内容前 30 行
 **Step 3: 提交**
 
 ```bash
-git add claude/agents/curl-debug-agent.md
-git commit -m "feat: add curl-debug-agent"
+git add claude/agents/agent-curl-debug.md
+git commit -m "feat: add agent-curl-debug"
 ```
 
 ---

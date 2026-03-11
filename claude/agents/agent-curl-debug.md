@@ -1,5 +1,5 @@
 ---
-name: xe:curl-debug-agent
+name: agent-curl-debug
 description: 深度诊断接口问题的 Agent
 allowed-tools: [Read, Grep, Glob, Bash, Skill]
 model: opus
