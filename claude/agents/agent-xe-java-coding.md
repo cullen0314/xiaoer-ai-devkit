@@ -1085,24 +1085,55 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
 ```markdown
 ✅ Java 代码实现完成！
 
-需求名称：{{需求名称}}
-技术设计：docs/{{需求名称}}/技术设计.md
+📄 技术设计: docs/{{需求名称}}/技术设计.md
+📋 需求名称: {{需求名称}}
 
-已完成阶段：
-  ✓ 数据库变更
-  ✓ Entity
-  ✓ Repository
-  ✓ Service层
-  ✓ Controller层
-  ✓ 测试
+✓ 已完成阶段：
+  • 数据库变更
+  • Entity
+  • Repository
+  • Service层
+  • Controller层
+  • 测试
 
-测试结果：
+📊 测试结果：
   所有测试通过：✅
   覆盖率：{{X}}%
 
-下一步：
-  • 代码评审 → Agent(code-reviewer)
-  • 提交代码 → git commit
+💡 新会话恢复方法：
+   方式1：使用 /xe:resume "{{需求名称}}"
+   方式2：直接读取技术设计文档的"六、详细执行计划"章节
+
+🚀 下一步选择：
+   • 运行代码自测 → Agent(agent-xe-unit-test)
+   • 代码评审 → Agent(code-reviewer)
+   • 提交代码 → git commit
+```
+
+**输出 JSON 格式：**
+
+```json
+{
+  "status": "completed",
+  "requirement_name": "{{需求名称}}",
+  "tech_design_doc": "docs/{{需求名称}}/技术设计.md",
+  "stages_completed": [
+    "数据库变更",
+    "Entity",
+    "Repository",
+    "Service层",
+    "Controller层",
+    "测试"
+  ],
+  "all_tests_passed": true,
+  "coverage": "{{X}}%",
+  "state_file": "docs/{{需求名称}}/state.json",
+  "next_stage_options": [
+    "运行代码自测 → Agent(agent-xe-unit-test)",
+    "代码评审 → Agent(code-reviewer)",
+    "提交代码 → git commit"
+  ]
+}
 ```
 
 ## 输入参数格式

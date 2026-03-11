@@ -70,7 +70,8 @@
       "Bash(curl -s \"https://api.github.com/search/repositories?q=llm+learning+path+stars:%3E%3D100&sort=best_match&order=desc&per_page=50\" | jq -r '.items[] | \"\\\\\\(.owner.login\\)/\\\\\\(.name\\)|\\\\\\(.stargazers_count\\)|\\\\\\(.description\\)|\\\\\\(.html_url\\)|\\\\\\(.archived\\)|\\\\\\(.language\\)|\\\\\\(.updated_at\\)\"' 2>/dev/null || echo \"API 调用失败\")",
       "Bash(curl -s \"https://api.github.com/search/repositories?q=awesome+ai+stars:%3E%3D100&sort=best_match&order=desc&per_page=50\" | jq -r '.items[] | \"\\\\\\(.owner.login\\)/\\\\\\(.name\\)|\\\\\\(.stargazers_count\\)|\\\\\\(.description\\)|\\\\\\(.html_url\\)|\\\\\\(.archived\\)|\\\\\\(.language\\)|\\\\\\(.updated_at\\)\"' 2>/dev/null || echo \"API 调用失败\")",
       "Bash(curl -s \"https://api.github.com/search/repositories?q=ai+agent+tutorial+stars:%3E%3D100&sort=best_match&order=desc&per_page=50\" | jq -r '.items[] | \"\\\\\\(.owner.login\\)/\\\\\\(.name\\)|\\\\\\(.stargazers_count\\)|\\\\\\(.description\\)|\\\\\\(.html_url\\)|\\\\\\(.archived\\)|\\\\\\(.language\\)|\\\\\\(.updated_at\\)\"' 2>/dev/null || echo \"API 调用失败\")",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(git mv claude/agents/agent-xe-test.md claude/agents/agent-xe-unit-test.md)"
     ]
   }
 }

@@ -350,9 +350,8 @@ node claude/utils/state-manager.js update "{requirementName}" "tech-plan" "compl
     "飞书文档URL: https://xxx.feishu.cn/docx/xxx"
   ],
   "next_stage_options": [
-    "tdd-implementation (推荐)",
-    "code-execution",
-    "task-list (可选，用于进一步细化任务)"
+    "上传技术设计文档到飞书",
+    "直接执行实现（推荐） → Agent(agent-xe-java-coding)"
   ]
 }
 ```
@@ -371,9 +370,10 @@ node claude/utils/state-manager.js update "{requirementName}" "tech-plan" "compl
    方式2：直接读取技术设计文档的"六、详细执行计划"章节
 
 🚀 下一步选择：
-   • TDD 开发（推荐）→ Agent(xe-tdd-implementation)
-   • 直接执行实现 → Agent(xe-code-execution)
-   • 细化任务列表 → Agent(xe-task-list)
+    • 直接执行实现（推荐） → Agent(agent-xe-java-coding)
+    • 上传技术设计文档到飞书 → Skill(feishu-doc-write)
+
+
 
 在新会话中，Agent 会自动从技术设计文档的执行计划章节读取任务详情。
 ```
