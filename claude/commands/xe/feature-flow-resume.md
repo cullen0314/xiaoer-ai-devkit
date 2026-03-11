@@ -89,7 +89,7 @@ node claude/utils/state-manager.js get "{需求名称}"
 2. 未使用新版本 feature-flow 创建需求
 
 解决方案：
-- 使用 /xe:resume 查看所有进行中的需求
+- 使用 /xe:feature-flow-resume 查看所有进行中的需求
 - 使用 /xe:feature-flow 从头开始创建
 ```
 
