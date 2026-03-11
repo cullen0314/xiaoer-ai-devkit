@@ -1,11 +1,11 @@
 ---
-name: resume
-description: 恢复功能开发流程 - 通过读取 state.json 检测所有进行中的需求并选择继续
+name: feature-flow-resume
+description: 恢复 feature-flow 流程 - 通过读取 state.json 检测当前阶段并继续
 argument-hint: "[需求名称]"
 disable-model-invocation: true
 ---
 
-# 恢复功能开发流程
+# 恢复 Feature-Flow 流程
 
 本命令用于恢复之前中断的功能开发流程，通过读取 `state.json` 自动检测当前阶段。
 
@@ -39,9 +39,9 @@ node claude/utils/state-manager.js list
 
 #  需求名称         当前阶段                    状态
 ────────────────────────────────────────────────────
-1  用户登录      task-list                  🟡 进行中
-2  订单支付      tdd-implementation         🟡 进行中
-3  消息推送      code-execution             🟡 进行中
+1  用户登录      java-coding                🟡 进行中
+2  订单支付      unit-test                  🟡 进行中
+3  消息推送      tech-plan                  🟡 进行中
 4  数据导出      tech-plan                  ✅ 已完成
 
 请选择要恢复的需求 [1-4]，或输入需求名称：
@@ -69,13 +69,13 @@ node claude/utils/state-manager.js get "{需求名称}"
 | current_stage | 下一步操作 | Agent 调用 | 说明 |
 |--------------|-----------|-----------|------|
 | `tech-plan` | 技术设计中 | Agent(agent-xe-tech-plan) | 继续设计 |
-| `tech-plan` ✅ | 设计已完成，可直接进入开发 | Agent(xe-tdd-implementation) 或 Agent(xe-code-execution) | **新流程**：技术设计文档包含执行计划，无需 task-list |
-| `task-list` | 任务分解中 | Agent(xe-task-list) | 兼容旧流程 |
-| `tdd-implementation` | TDD 开发中 | Agent(xe-tdd-implementation) | 继续开发 |
-| `code-execution` | 代码执行中 | Agent(xe-code-execution) | 继续执行 |
-| 所有阶段完成 | 代码评审 | Agent(code-reviewer) | 质量检查 |
+| `tech-plan` ✅ | 设计已完成，进入代码实现 | Agent(agent-xe-java-coding) | **新流程**：技术设计文档包含执行计划，直接进入开发 |
+| `java-coding` | 代码实现中 | Agent(agent-xe-java-coding) | 继续开发 |
+| `java-coding` ✅ | 代码已完成，进入自测 | Agent(agent-xe-unit-test) | 执行单元测试 |
+| `unit-test` | 代码自测中 | Agent(agent-xe-unit-test) | 继续测试 |
+| `unit-test` ✅ | 所有开发完成 | Agent(everything-claude-code:code-reviewer) | 代码评审 |
 
-> **重要改进**：从 v2.0 开始，`tech-plan` 完成后技术设计文档包含"六、详细执行计划"章节，可直接进入开发阶段，无需额外的 `task-list` 步骤。
+> **流程**：tech-plan → java-coding → unit-test → code-review
 
 ### 状态文件不存在
 
@@ -114,12 +114,12 @@ node claude/utils/state-manager.js list
 📋 检测到开发进度：
 
 需求：用户登录
-阶段：task-list 🟡
+阶段：java-coding 🟡
 状态：技术设计已完成
 
 状态文件：docs/用户登录/state.json
 
-即将继续执行：xe-task-list Agent
+即将继续执行：agent-xe-java-coding Agent
 
 [Enter] 继续 | [c] 取消
 ```
@@ -131,8 +131,8 @@ node claude/utils/state-manager.js list
 
 #  需求名称         当前阶段                    状态          更新时间
 ────────────────────────────────────────────────────────────────────
-1  用户登录      task-list                  🟡 进行中      2026-03-07 14:30
-2  订单支付      tdd-implementation         🟡 进行中      2026-03-06 10:15
+1  用户登录      java-coding                🟡 进行中      2026-03-11 14:30
+2  订单支付      unit-test                  🟡 进行中      2026-03-10 10:15
 
 请选择要恢复的需求 [1-2]，或输入需求名称：
 ```
@@ -142,15 +142,11 @@ node claude/utils/state-manager.js list
 根据用户选择，启动对应的 Agent：
 
 ```bash
-# 示例：恢复 task-list 阶段
-Agent({
-  subagent_type: "xe-task-list",
-  prompt: `
-需求名称：{需求名称}
-
-请继续任务分解工作。
-`
-})
+# 示例：恢复 java-coding 阶段
+Agent(
+  subagent_type="agent-xe-java-coding",
+  prompt="需求名称：{需求名称}\n\n请继续代码实现工作。"
+)
 ```
 
 ### 步骤 5：显示摘要
@@ -177,20 +173,17 @@ Agent 完成后，显示完成摘要：
     "description": "实现用户登录功能",
     "created_at": "2026-03-07T10:00:00Z"
   },
-  "current_stage": "task-list",
+  "current_stage": "java-coding",
   "stages": {
     "tech-plan": {
       "status": "completed",
       "output": "docs/用户登录/技术设计.md",
       "completed_at": "2026-03-07T14:30:00Z"
     },
-    "task-list": {
+    "java-coding": {
       "status": "in_progress"
     },
-    "tdd-implementation": {
-      "status": "pending"
-    },
-    "code-execution": {
+    "unit-test": {
       "status": "pending"
     }
   },
@@ -227,9 +220,8 @@ Agent 完成后，显示完成摘要：
 |------|------|
 | `claude/utils/state-manager.js` | 状态管理工具 |
 | `claude/agents/agent-xe-tech-plan.md` | Tech-Plan Agent |
-| `claude/agents/xe-task-list.md` | Task-List Agent |
-| `claude/agents/xe-tdd-implementation.md` | TDD Agent |
-| `claude/agents/xe-code-execution.md` | Code-Execution Agent |
+| `claude/agents/agent-xe-java-coding.md` | Java-Coding Agent |
+| `claude/agents/agent-xe-unit-test.md` | Unit-Test Agent |
 
 ## 注意事项
 

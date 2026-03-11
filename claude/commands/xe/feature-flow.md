@@ -63,7 +63,7 @@ Agent(
 ## 断点续传
 
 ```bash
-/xe:resume "需求名称"
+/xe:feature-flow-resume "需求名称"
 ```
 
 | 当前阶段 | 恢复后操作 |

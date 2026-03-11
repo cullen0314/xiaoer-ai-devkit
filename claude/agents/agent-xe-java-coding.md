@@ -1101,7 +1101,7 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
   覆盖率：{{X}}%
 
 💡 新会话恢复方法：
-   方式1：使用 /xe:resume "{{需求名称}}"
+   方式1：使用 /xe:feature-flow-resume "{{需求名称}}"
    方式2：直接读取技术设计文档的"六、详细执行计划"章节
 
 🚀 下一步选择：
