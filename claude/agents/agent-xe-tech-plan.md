@@ -1,7 +1,7 @@
 ---
 name: agent-xe-tech-plan
 description: 执行技术方案设计，生成设计文档和状态文件
-allowed-tools: Bash(java:*), Bash(mvn:*), Bash(python:*), Bash(python3:*), Bash(uv run:*), Bash(find:*), Bash(grep:*), Bash(sed:*), Bash(cut:*), Bash(head:*), Bash(ls:*), Bash(cat:*), Bash(git:*), Bash(echo:*), Bash(awk:*), Bash(mktemp:*), Bash(rm:*), Bash(mkdir:*), Read(*), Write(*), Edit(*), MultiEdit(*), Glob(*), Search(*), Task(code-task-executor), Skill(feishu-doc-read), Skill(mysql-executor), Skill(memory:memory-search)
+allowed-tools: Bash(java:*), Bash(mvn:*), Bash(python:*), Bash(python3:*), Bash(uv run:*), Bash(find:*), Bash(grep:*), Bash(sed:*), Bash(cut:*), Bash(head:*), Bash(ls:*), Bash(cat:*), Bash(git:*), Bash(echo:*), Bash(awk:*), Bash(mktemp:*), Bash(rm:*), Bash(mkdir:*), Read(*), Write(*), Edit(*), MultiEdit(*), Glob(*), Search(*), Task(code-task-executor), Skill(feishu-doc-read), Skill(mysql-executor), Skill(memory:memory-search), Skill(feishu-doc-write)
 permissionMode: acceptEdits
 model: opus
 ---
@@ -20,7 +20,7 @@ model: opus
 
 ## 反面实例(模式)：「直接开始输出文档」
 
-每个功能都应该经过设计阶段。直接跳过设计会导致：
+每个功能都应该经过设计沟通阶段。直接跳过设计会导致：
 - 需求理解偏差，返工
 - 技术选型不合理，重构
 - 边界情况遗漏，线上问题
@@ -65,7 +65,7 @@ Skill("feishu-doc-read", `--no-save ${prdUrl}`)
 
 ### 步骤 4：需求澄清
 
-逐个提问澄清需求，一次一个问题：
+逐个提问澄清需求，一次一个问题，用户澄清后再继续下一个问题，直到明确所有逻辑；
 
 | 检查项 | 说明 |
 |--------|------|
@@ -114,16 +114,12 @@ DOC_PATH="docs/{需求名称}/技术设计.md"
 
 #### 7.2 读取模板
 
-**模板读取顺序：**
-1. 优先读取项目根目录的 `技术设计文档模板.md`（项目自定义模板）
-2. 如果不存在，读取 Agent 目录的模板：`claude/agents/技术设计文档模板.md`
+**模板读取路径：**
+1. 读取 Agent 目录的模板：`claude/agents/assets/技术设计文档模板.md`,如果不存在，则提示用户设计方案模板不存在，停止这个需求讨论
 
 ```bash
 # 读取模板
-TEMPLATE_PATH="技术设计文档模板.md"
-if [ ! -f "$TEMPLATE_PATH" ]; then
-    TEMPLATE_PATH="claude/agents/技术设计文档模板.md"
-fi
+TEMPLATE_PATH="claude/agents/assets/技术设计文档模板.md"
 cat "$TEMPLATE_PATH"
 ```
 
@@ -139,7 +135,7 @@ cat "$TEMPLATE_PATH"
 需求文档 PRD 地址：{实际的飞书PRD链接}
 
 ## 1.1 需求背景
-[说明需求背景，现状痛点已经此需求可以解决的问题]
+[说明需求背景，现状、痛点等]
 
 ## 1.2 需求用例图
 [使用 Mermaid 绘制用例图，展示角色与功能关系]
