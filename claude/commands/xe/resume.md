@@ -66,13 +66,16 @@ node claude/utils/state-manager.js get "{需求名称}"
 
 ### 阶段判断表
 
-| current_stage | 下一步操作 | Agent 调用 |
-|--------------|-----------|-----------|
-| `tech-plan` | 技术设计中 | Agent(agent-xe-tech-plan) |
-| `task-list` | 任务分解中 | Agent(xe-task-list) |
-| `tdd-implementation` | TDD 开发中 | Agent(xe-tdd-implementation) |
-| `code-execution` | 代码执行中 | Agent(xe-code-execution) |
-| 所有阶段完成 | 代码评审 | Agent(code-reviewer) |
+| current_stage | 下一步操作 | Agent 调用 | 说明 |
+|--------------|-----------|-----------|------|
+| `tech-plan` | 技术设计中 | Agent(agent-xe-tech-plan) | 继续设计 |
+| `tech-plan` ✅ | 设计已完成，可直接进入开发 | Agent(xe-tdd-implementation) 或 Agent(xe-code-execution) | **新流程**：技术设计文档包含执行计划，无需 task-list |
+| `task-list` | 任务分解中 | Agent(xe-task-list) | 兼容旧流程 |
+| `tdd-implementation` | TDD 开发中 | Agent(xe-tdd-implementation) | 继续开发 |
+| `code-execution` | 代码执行中 | Agent(xe-code-execution) | 继续执行 |
+| 所有阶段完成 | 代码评审 | Agent(code-reviewer) | 质量检查 |
+
+> **重要改进**：从 v2.0 开始，`tech-plan` 完成后技术设计文档包含"六、详细执行计划"章节，可直接进入开发阶段，无需额外的 `task-list` 步骤。
 
 ### 状态文件不存在
 

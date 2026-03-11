@@ -25,27 +25,23 @@ disable-model-invocation: true
 ┌─────────────────────────────────────────────────────────────────┐
 │  主会话：轻量级协调器                                           │
 │  → 调用 Agent(agent-xe-tech-plan)    独立上下文                        │
+│  → 生成技术设计文档（含"六、详细执行计划"章节）                     │
 │  → 读取 state.json 确认完成                                     │
 │  → 显示摘要，等待用户确认                                       │
 └─────────────────────────────────────────────────────────────────┘
         ↓ 用户确认
 ┌─────────────────────────────────────────────────────────────────┐
-│  主会话：轻量级协调器                                           │
-│  → 调用 Agent(xe-task-list)    独立上下文                        │
-│  → 读取 state.json 确认完成                                     │
-│  → 显示摘要，等待用户确认                                       │
+│  主会话：选择下一步流程                                          │
+│  → TDD 开发（推荐）→ Agent(xe-tdd-implementation)               │
+│  → 直接实现 → Agent(xe-code-execution)                         │
+│  → 细化任务（可选）→ Agent(xe-task-list)                       │
+│  → 技术设计文档包含完整执行计划，新会话可直接读取                 │
 └─────────────────────────────────────────────────────────────────┘
-        ↓ 用户确认
+        ↓ 用户选择
 ┌─────────────────────────────────────────────────────────────────┐
 │  主会话：轻量级协调器                                           │
-│  → 调用 Agent(xe-tdd-implementation)   独立上下文                │
-│  → 读取 state.json 确认完成                                     │
-│  → 显示摘要，等待用户确认                                       │
-└─────────────────────────────────────────────────────────────────┘
-        ↓ 用户确认
-┌─────────────────────────────────────────────────────────────────┐
-│  主会话：轻量级协调器                                           │
-│  → 调用 Agent(xe-code-execution) 独立上下文                      │
+│  → 调用对应的 Agent 执行开发                                    │
+│  → Agent 从技术设计文档的"六、详细执行计划"读取任务              │
 │  → 读取 state.json 确认完成                                     │
 │  → 显示摘要，等待用户确认                                       │
 └─────────────────────────────────────────────────────────────────┘
@@ -57,6 +53,8 @@ disable-model-invocation: true
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+> **v2.0 新特性**：技术设计文档现在包含"六、详细执行计划"章节，包含文件路径、代码结构、验证命令等完整信息。新会话可直接读取此章节继续开发，无需额外的 task-list 步骤。
+
 ## 输入
 
 - PRD链接: $ARGUMENTS（飞书文档链接）
@@ -64,13 +62,13 @@ disable-model-invocation: true
 
 ## 输出
 
-| 输出物 | 路径 |
-|------|------|
-| 状态文件 | `docs/{需求名称}/state.json` |
-| 技术设计文档 | `docs/{需求名称}/技术设计.md` |
-| 任务列表文档 | `docs/plans/YYYY-MM-DD-{feature-name}.md` |
-| 实现代码 + 测试 | 源代码目录 |
-| 验证报告 | 控制台输出 |
+| 输出物 | 路径 | 说明 |
+|------|------|------|
+| 状态文件 | `docs/{需求名称}/state.json` | 记录各阶段进度 |
+| 技术设计文档 | `docs/{需求名称}/技术设计.md` | 包含"六、详细执行计划" |
+| 任务列表文档（可选） | `docs/plans/YYYY-MM-DD-{feature-name}.md` | 如需进一步细化任务 |
+| 实现代码 + 测试 | 源代码目录 | |
+| 验证报告 | 控制台输出 | |
 
 ## 执行流程
 
@@ -110,12 +108,48 @@ node claude/utils/state-manager.js get "{需求名称}"
 - 密码使用 bcrypt 加密
 - 登录失败限流 5 次/小时
 
-[Enter] 继续下一阶段 | [r] 重新设计 | [m] 修改设计
+💡 新会话恢复：
+   使用 /xe:resume "{需求名称}" 可在新会话中继续
+
+🚀 下一步选择：
+   [1] TDD 开发（推荐）→ Agent(xe-tdd-implementation)
+   [2] 直接实现 → Agent(xe-code-execution)
+   [3] 细化任务（可选）→ Agent(xe-task-list)
+
+技术设计文档包含完整执行计划，新会话可直接读取。
 ```
 
-### 阶段 2：Task-List
+### 阶段 2：开发实现（三选一）
 
-用户确认后，启动 task-list Agent：
+根据用户选择，启动对应的 Agent：
+
+#### 选项 1：TDD 开发（推荐）
+
+```bash
+Agent({
+  subagent_type: "xe-tdd-implementation",
+  prompt: `
+需求名称：{需求名称}
+
+请执行 TDD 开发流程，从技术设计文档的"六、详细执行计划"章节读取任务。
+`
+})
+```
+
+#### 选项 2：直接实现
+
+```bash
+Agent({
+  subagent_type: "xe-code-execution",
+  prompt: `
+需求名称：{需求名称}
+
+请执行代码实现，从技术设计文档的"六、详细执行计划"章节读取任务。
+`
+})
+```
+
+#### 选项 3：细化任务（可选）
 
 ```bash
 Agent({
@@ -123,12 +157,12 @@ Agent({
   prompt: `
 需求名称：{需求名称}
 
-请读取技术设计文档，分解为可执行任务列表。
+请读取技术设计文档，进一步细化分解为可执行任务列表。
 `
 })
 ```
 
-Agent 完成后，主会话：
+**Agent 完成后（选项 3 需要先完成）：**
 
 ```bash
 # 读取状态文件
@@ -146,15 +180,18 @@ node claude/utils/state-manager.js get "{需求名称}"
 [Enter] 开始 TDD 开发 | [r] 重新分解 | [m] 修改任务
 ```
 
-### 阶段 3：TDD-Implementation
+### 阶段 3：继续开发
 
-用户确认后，启动 tdd-implementation Agent：
+如果用户在阶段2选择了选项3（细化任务），则在任务列表确认后启动开发 Agent：
+
+**TDD 方式：**
 
 ```bash
 Agent({
   subagent_type: "xe-tdd-implementation",
   prompt: `
 需求名称：{需求名称}
+技术设计文档：docs/{需求名称}/技术设计.md
 任务列表：docs/plans/YYYY-MM-DD-{feature-name}.md
 
 请执行 TDD 开发流程。
@@ -162,32 +199,14 @@ Agent({
 })
 ```
 
-Agent 完成后，主会话：
-
-```bash
-# 读取状态文件
-node claude/utils/state-manager.js get "{需求名称}"
-```
-
-```markdown
-✅ TDD-Implementation 阶段完成
-
-需求名称：{需求名称}
-总任务数：{N}
-测试覆盖率：{X}%
-
-[Enter] 继续代码执行 | [r] 重新开发
-```
-
-### 阶段 4：Code-Execution
-
-用户确认后，启动 code-execution Agent：
+**直接实现方式：**
 
 ```bash
 Agent({
   subagent_type: "xe-code-execution",
   prompt: `
 需求名称：{需求名称}
+技术设计文档：docs/{需求名称}/技术设计.md
 任务列表：docs/plans/YYYY-MM-DD-{feature-name}.md
 
 请执行代码实现和验证。
@@ -195,7 +214,7 @@ Agent({
 })
 ```
 
-Agent 完成后，主会话：
+**Agent 完成后：**
 
 ```bash
 # 读取状态文件
@@ -203,16 +222,17 @@ node claude/utils/state-manager.js get "{需求名称}"
 ```
 
 ```markdown
-✅ Code-Execution 阶段完成
+✅ 开发阶段完成
 
 需求名称：{需求名称}
 总任务数：{N}
+测试覆盖率：{X}%
 所有测试通过：✅
 
 [Enter] 继续代码评审
 ```
 
-### 阶段 5：Code-Review & Verification
+### 阶段 4：Code-Review & Verification
 
 ```bash
 # 调用 code-reviewer Agent

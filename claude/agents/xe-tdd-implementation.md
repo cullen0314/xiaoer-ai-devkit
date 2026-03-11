@@ -34,9 +34,21 @@ node claude/utils/state-manager.js get "{requirementName}"
 
 ### 步骤 2：读取任务列表
 
+**优先级**：技术设计文档 > 独立任务列表文档
+
 ```bash
+# 方式1：从技术设计文档读取（推荐）
+# 优先尝试读取技术设计文档中的"六、详细执行计划"章节
+Read(docs/{需求名称}/技术设计.md)
+
+# 方式2：从独立任务列表文档读取（兼容旧流程）
+# 如果技术设计文档中没有执行计划章节，则读取独立文档
 Read(docs/plans/YYYY-MM-DD-{feature-name}.md)
 ```
+
+**读取说明**：
+- 如果从技术设计文档读取，重点查看 **6.2 详细任务清单** 章节
+- 每个任务包含：文件结构、代码要点、验证命令、预期结果
 
 ### 步骤 3：标记阶段进行中
 
@@ -233,31 +245,36 @@ node claude/utils/state-manager.js update "{requirementName}" "tdd-implementatio
 ```json
 {
   "requirementName": "用户登录",
-  "taskListDoc": "docs/plans/2026-03-07-用户登录.md"
+  "techDesignDoc": "docs/用户登录/技术设计.md"
 }
 ```
+
+> **说明**：优先使用 `techDesignDoc`（技术设计文档），如不存在则回退到独立的任务列表文档。
 
 ## 错误处理
 
-### task-list 未完成
+### tech-plan 未完成
 
 ```json
 {
   "status": "error",
-  "error": "task-list stage not completed",
-  "message": "请先完成 task-list 阶段",
-  "current_stage": "task-list"
+  "error": "tech-plan stage not completed",
+  "message": "请先完成 tech-plan 阶段",
+  "current_stage": "tech-plan"
 }
 ```
 
-### 任务列表不存在
+### 任务文档不存在
 
 ```json
 {
   "status": "error",
-  "error": "task list document not found",
-  "message": "未找到任务列表文档",
-  "expected_path": "docs/plans/YYYY-MM-DD-{feature-name}.md"
+  "error": "task document not found",
+  "message": "未找到技术设计文档或任务列表文档",
+  "expected_paths": [
+    "docs/{需求名称}/技术设计.md",
+    "docs/plans/YYYY-MM-DD-{feature-name}.md"
+  ]
 }
 ```
 
