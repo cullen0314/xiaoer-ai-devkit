@@ -76,7 +76,8 @@
       "Bash(git config --global --get http.proxy)",
       "Bash(git config --global --get https.proxy)",
       "Bash(git config --global http.proxy http://127.0.0.1:7890 && git config --global https.proxy http://127.0.0.1:7890)",
-      "Bash(git add -A && git status)"
+      "Bash(git add -A && git status)",
+      "Bash(echo \"Query-4: AI agency/automation\" && gh search repos --limit 50 \"AI agency\" --json name,owner,description,stars,url,updatedAt,primaryLanguage,isArchived,isFork,topics,licenseInfo 2>/dev/null || echo \"API limit or error\")"
     ]
   }
 }
