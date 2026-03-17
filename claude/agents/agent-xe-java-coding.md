@@ -1045,6 +1045,688 @@ ${BUILD_CMD:-./gradlew} spotlessCheck
 ${BUILD_CMD:-./gradlew} checkstyleMain
 ```
 
+### 步骤 8.5：自检循环机制 ⭐ 核心
+
+**⚠️ 重要原则：代码开发完成后，必须通过编译检查才能标记完成！**
+
+#### 8.5.1 自检循环流程
+
+```bash
+# 初始化循环变量
+MAX_RETRY=5           # 最大重试次数
+RETRY_COUNT=0         # 当前重试次数
+COMPILE_SUCCESS=false # 编译成功标志
+
+echo ""
+echo "🔍 开始自检循环..."
+echo ""
+
+while [ $RETRY_COUNT -lt $MAX_RETRY ] && [ "$COMPILE_SUCCESS" = false ]; do
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🔍 自检轮次: $RETRY_COUNT/$MAX_RETRY"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+
+  # 执行编译检查
+  echo "[1/3] 执行编译检查..."
+  COMPILE_OUTPUT=$(${BUILD_CMD:-./gradlew} compileJava 2>&1)
+  COMPILE_EXIT_CODE=$?
+
+  if [ $COMPILE_EXIT_CODE -eq 0 ]; then
+    echo "✅ 编译成功！"
+    COMPILE_SUCCESS=true
+
+    # 编译成功后，执行测试检查
+    echo ""
+    echo "[2/3] 执行测试检查..."
+    TEST_OUTPUT=$(${BUILD_CMD:-./gradlew} test --no-daemon 2>&1)
+    TEST_EXIT_CODE=$?
+
+    if [ $TEST_EXIT_CODE -eq 0 ]; then
+      echo "✅ 测试全部通过！"
+
+      # 执行代码格式检查（如果配置了）
+      echo ""
+      echo "[3/3] 执行代码格式检查..."
+      if ${BUILD_CMD:-./gradlew} spotlessCheck 2>/dev/null; then
+        echo "✅ 代码格式检查通过！"
+      else
+        echo "⚠️  代码格式检查未通过，尝试自动格式化..."
+        ${BUILD_CMD:-./gradlew} spotlessApply 2>/dev/null
+      fi
+
+      echo ""
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "✅ 自检通过！代码质量合格"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      break
+    else
+      echo "❌ 测试失败，需要修复测试问题"
+      echo ""
+      echo "📋 测试失败摘要："
+      echo "$TEST_OUTPUT" | grep -A 3 "FAILED\|ERROR" | head -20
+      echo ""
+
+      # 询问是否继续修复
+      if [ $RETRY_COUNT -lt $MAX_RETRY ]; then
+        echo "🔧 正在修复测试问题..."
+        # 调用修复逻辑
+        fix_test_failures "$TEST_OUTPUT"
+      fi
+    fi
+  else
+    echo "❌ 编译失败"
+    echo ""
+
+    # 分析编译错误
+    echo "📋 编译错误摘要："
+    echo "$COMPILE_OUTPUT" | grep -E "error:|ERROR|cannot find symbol" | head -10
+    echo ""
+
+    # 检查是否达到最大重试次数
+    if [ $RETRY_COUNT -ge $MAX_RETRY ]; then
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "❌ 自检失败：已达到最大重试次数 ($MAX_RETRY)"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo ""
+      echo "📋 完整编译错误："
+      echo "$COMPILE_OUTPUT"
+      exit 1
+    fi
+
+    echo "🔧 正在修复编译错误..."
+    # 调用修复逻辑
+    fix_compile_errors "$COMPILE_OUTPUT"
+  fi
+
+  echo ""
+  echo "⏳ 等待 2 秒后重试..."
+  sleep 2
+done
+
+# 最终检查
+if [ "$COMPILE_SUCCESS" = false ]; then
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "❌ 自检最终失败"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  exit 1
+fi
+```
+
+#### 8.5.2 编译错误修复函数
+
+```bash
+# 修复编译错误的函数
+fix_compile_errors() {
+  local error_output="$1"
+
+  echo ""
+  echo "🔧 分析编译错误..."
+
+  # 提取错误文件和行号
+  ERROR_FILES=$(echo "$error_output" | grep -oP '(?<=\.java:)[0-9]+: error:' | cut -d: -f1 | sort -u)
+  ERROR_COUNT=$(echo "$ERROR_FILES" | wc -l)
+
+  echo "   发现 $ERROR_COUNT 个文件存在编译错误"
+
+  # 常见错误类型和修复方案
+  # 1. 找不到符号（缺少导入、变量不存在）
+  if echo "$error_output" | grep -q "cannot find symbol"; then
+    echo "   错误类型: 找不到符号"
+    echo "   修复方案: 检查导入语句、变量名拼写"
+
+    # 提取找不到符号的类名
+    MISSING_SYMBOLS=$(echo "$error_output" | grep -oP 'symbol:\s+class\s+\K[^ ]+' | sort -u)
+
+    for symbol in $MISSING_SYMBOLS; do
+      echo "   - 缺少符号: $symbol"
+
+      # 尝试在项目中查找该类
+      FOUND_CLASS=$(find . -name "$symbol.java" -o -name "*$symbol*.java" | head -1)
+      if [ -n "$FOUND_CLASS" ]; then
+        echo "     → 找到类文件: $FOUND_CLASS"
+        # 读取文件获取包路径
+        CLASS_PACKAGE=$(grep "^package " "$FOUND_CLASS" | sed 's/package //; s/;//')
+        echo "     → 需要添加导入: import $CLASS_PACKAGE.$symbol;"
+      fi
+    done
+  fi
+
+  # 2. 类型不匹配
+  if echo "$error_output" | grep -q "incompatible types"; then
+    echo "   错误类型: 类型不匹配"
+    echo "   修复方案: 检查类型转换、泛型使用"
+  fi
+
+  # 3. 方法不存在
+  if echo "$error_output" | grep -q "cannot find symbol.*method"; then
+    echo "   错误类型: 方法不存在"
+    echo "   修复方案: 检查方法名、参数类型"
+  fi
+
+  # 4. 缺少构造器
+  if echo "$error_output" | grep -q "cannot find symbol.*constructor"; then
+    echo "   错误类型: 缺少构造器"
+    echo "   修复方案: 检查类定义、添加依赖注入"
+  fi
+
+  echo ""
+  echo "🔧 正在修复错误..."
+
+  # 遍历出错的文件
+  for error_file in $ERROR_FILES; do
+    # 查找实际的 Java 文件
+    JAVA_FILE=$(find . -name "${error_file}.java" 2>/dev/null | head -1)
+
+    if [ -n "$JAVA_FILE" ]; then
+      echo "   修复文件: $JAVA_FILE"
+
+      # 读取文件内容
+      Read("$JAVA_FILE")
+
+      # 分析该文件的编译错误
+      FILE_ERRORS=$(echo "$error_output" | grep "$error_file\.java" | grep "error:")
+
+      # 逐个处理错误
+      while IFS= read -r error_line; do
+        # 提取行号
+        ERROR_LINE=$(echo "$error_line" | grep -oP '(?<=\.java:)[0-9]+' | head -1)
+        ERROR_MSG=$(echo "$error_line" | grep -oP 'error:\s*\K.+' | head -1)
+
+        echo "     行 $ERROR_LINE: $ERROR_MSG"
+
+        # 根据错误类型进行修复
+        # 这里可以添加具体的修复逻辑
+        # 例如：添加缺失的导入、修正类型等
+
+      done <<< "$FILE_ERRORS"
+    fi
+  done
+
+  echo "   ✅ 错误分析完成，开始修复..."
+}
+```
+
+#### 8.5.3 测试失败修复函数
+
+```bash
+# 修复测试失败的函数
+fix_test_failures() {
+  local test_output="$1"
+
+  echo ""
+  echo "🔧 分析测试失败..."
+
+  # 提取失败的测试类
+  FAILED_TESTS=$(echo "$test_output" | grep -oP '(?<=test\s)[^<]+(?=<)" | head -5)
+  FAILED_COUNT=$(echo "$FAILED_TESTS" | wc -l)
+
+  echo "   发现 $FAILED_COUNT 个测试失败"
+
+  for test_name in $FAILED_TESTS; do
+    echo "   - 失败测试: $test_name"
+  done
+
+  echo ""
+  echo "🔧 正在修复测试..."
+
+  # 查找失败的测试文件并修复
+  # 这里可以添加具体的测试修复逻辑
+}
+```
+
+#### 8.5.4 自检状态记录
+
+```bash
+# 记录自检状态到文件
+SELF_CHECK_FILE="docs/${REQUIREMENT_NAME}/.self-check.json"
+
+cat > "$SELF_CHECK_FILE" << EOF
+{
+  "requirement": "$REQUIREMENT_NAME",
+  "self_check": {
+    "retry_count": $RETRY_COUNT,
+    "max_retry": $MAX_RETRY,
+    "compile_success": $COMPILE_SUCCESS,
+    "test_success": $(if [ "$COMPILE_SUCCESS" = true ] && [ $TEST_EXIT_CODE -eq 0 ]; then echo "true"; else echo "false"; fi),
+    "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  }
+}
+EOF
+```
+
+#### 8.5.5 自检输出格式
+
+**自检成功输出：**
+
+```markdown
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ 自检通过！代码质量合格
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 自检摘要:
+   编译状态: ✅ 通过
+   测试状态: ✅ 通过 (测试数: XX, 失败: 0)
+   格式检查: ✅ 通过
+
+💾 自检记录: docs/{{需求名称}}/.self-check.json
+```
+
+**自检失败输出：**
+
+```markdown
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ 自检失败：已达到最大重试次数 (5)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 最后一次编译错误:
+   [错误详情...]
+
+💡 建议:
+   1. 检查代码语法错误
+   2. 确认依赖导入完整
+   3. 验证类型匹配
+   4. 查看完整编译日志
+```
+
+### 步骤 8.6：改动影响范围分析 ⭐ 核心
+
+**⚠️ 重要原则：代码开发完成后，必须分析本期改动的影响范围，识别潜在风险！**
+
+#### 8.6.1 影响范围分析流程
+
+```bash
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🔍 开始分析本期改动影响范围..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# 保存当前改动范围报告
+IMPACT_REPORT_FILE="docs/${REQUIREMENT_NAME}/.impact-report.md"
+
+# 获取 git 改动文件（如果有 git 仓库）
+if [ -d ".git" ]; then
+  # 获取相对于起始提交的改动文件
+  if [ -n "$BASE_BRANCH" ]; then
+    CHANGED_FILES=$(git diff --name-only "$BASE_BRANCH" 2>/dev/null || git diff --name-only HEAD~5 2>/dev/null)
+  else
+    CHANGED_FILES=$(git diff --name-only HEAD~5 2>/dev/null || echo "")
+  fi
+else
+  # 没有 git，使用文件修改时间推断
+  START_TIME=$(date -d "2 hours ago" +%Y%m%d%H%M%S 2>/dev/null || date -v-2H +%Y%m%d%H%M%S)
+  CHANGED_FILES=$(find . -name "*.java" -type f -newermt "2 hours ago" 2>/dev/null | head -20)
+fi
+
+# 统计改动文件
+TOTAL_CHANGED=$(echo "$CHANGED_FILES" | grep -c "^" || echo "0")
+
+echo "📊 改动统计: 共 $TOTAL_CHANGED 个文件发生变动"
+echo ""
+
+# 按类型分类改动文件
+NEW_FILES=$(echo "$CHANGED_FILES" | grep -E "^src/main/java.*\.java$" | wc -l | xargs)
+TEST_FILES=$(echo "$CHANGED_FILES" | grep -E "^src/test/java.*\.java$" | wc -l | xargs)
+CONFIG_FILES=$(echo "$CHANGED_FILES" | grep -E "\.(xml|properties|yml|yaml)" | wc -l | xargs)
+SQL_FILES=$(echo "$CHANGED_FILES" | grep -E "\.sql$" | wc -l | xargs)
+
+echo "📋 改动分类:"
+echo "   • 新增/修改 Java 文件: $NEW_FILES"
+echo "   • 测试文件: $TEST_FILES"
+echo "   • 配置文件: $CONFIG_FILES"
+echo "   • SQL 迁移文件: $SQL_FILES"
+echo ""
+
+# 按模块分类
+echo "📦 按模块分类:"
+MODULES=$(echo "$CHANGED_FILES" | grep -oP '(?<=src/main/java/)[^/]+' | sort -u)
+for module in $MODULES; do
+  count=$(echo "$CHANGED_FILES" | grep -c "/$module/" || echo "0")
+  echo "   • $module: $count 个文件"
+done
+echo ""
+
+# 分析影响范围
+echo "🎯 影响范围分析:"
+echo ""
+
+# 1. 数据库变更影响
+if [ "$SQL_FILES" -gt 0 ]; then
+  echo "   ⚠️  数据库变更:"
+  echo "      • 检测到 $SQL_FILES 个 SQL 迁移文件"
+  echo "      • 影响: 表结构变更、数据迁移、兼容性风险"
+  echo "      • 建议: 确认迁移脚本正确性、准备回滚方案"
+  echo ""
+fi
+
+# 2. Controller 层变更影响
+CONTROLLER_CHANGES=$(echo "$CHANGED_FILES" | grep -i "controller" | wc -l | xargs)
+if [ "$CONTROLLER_CHANGES" -gt 0 ]; then
+  echo "   ⚠️  API 接口变更:"
+  echo "      • 检测到 $CONTROLLER_CHANGES 个 Controller 文件变更"
+  echo "      • 影响: API 接口行为变化、客户端兼容性"
+  echo "      • 建议: 检查接口变更、更新 API 文档、通知下游"
+  echo ""
+fi
+
+# 3. Service 层变更影响
+SERVICE_CHANGES=$(echo "$CHANGED_FILES" | grep -i "service" | grep -v "test" | wc -l | xargs)
+if [ "$SERVICE_CHANGES" -gt 0 ]; then
+  echo "   ⚠️  业务逻辑变更:"
+  echo "      • 检测到 $SERVICE_CHANGES 个 Service 文件变更"
+  echo "      • 影响: 业务流程变化、事务边界变更"
+  echo "      • 建议: 审查业务逻辑、确认事务一致性、补充测试"
+  echo ""
+fi
+
+# 4. Entity 层变更影响
+ENTITY_CHANGES=$(echo "$CHANGED_FILES" | grep -iE "entity|model|domain" | wc -l | xargs)
+if [ "$ENTITY_CHANGES" -gt 0 ]; then
+  echo "   ⚠️  数据模型变更:"
+  echo "      • 检测到 $ENTITY_CHANGES 个 Entity 文件变更"
+  echo "      • 影响: 数据结构变化、序列化兼容性"
+  echo "      • 建议: 检查字段映射、确认序列化兼容、通知相关方"
+  echo ""
+fi
+
+# 5. 配置变更影响
+if [ "$CONFIG_FILES" -gt 0 ]; then
+  echo "   ⚠️  配置变更:"
+  echo "      • 检测到 $CONFIG_FILES 个配置文件变更"
+  echo "      • 影响: 应用行为变化、环境差异"
+  echo "      • 建议: 确认配置正确性、检查环境一致性"
+  echo ""
+fi
+
+# 6. 公共组件变更
+COMMON_CHANGES=$(echo "$CHANGED_FILES" | grep -iE "util|helper|common|shared|component" | wc -l | xargs)
+if [ "$COMMON_CHANGES" -gt 0 ]; then
+  echo "   ⚠️  公共组件变更:"
+  echo "      • 检测到 $COMMON_CHANGES 个公共组件文件变更"
+  echo "      • 影响: 可能影响多个模块、风险较高"
+  echo "      • 建议: 全量回归测试、通知所有相关开发"
+  echo ""
+fi
+
+# 生成改动文件列表
+echo ""
+echo "📄 改动文件列表:"
+echo "$CHANGED_FILES" | nl -w2 -s'. '
+echo ""
+
+# 检测潜在风险
+echo "🚨 潜在风险检测:"
+RISK_DETECTED=false
+
+# 风险1：大范围改动
+if [ "$TOTAL_CHANGED" -gt 20 ]; then
+  echo "   ⚠️  改动范围较大 ($TOTAL_CHANGED 个文件)"
+  echo "      → 建议: 增加测试覆盖率、考虑分批上线"
+  RISK_DETECTED=true
+fi
+
+# 风险2：跨模块改动
+MODULE_COUNT=$(echo "$MODULES" | wc -l | xargs)
+if [ "$MODULE_COUNT" -gt 3 ]; then
+  echo "   ⚠️  跨模块改动 (影响 $MODULE_COUNT 个模块)"
+  echo "      → 建议: 模块间集成测试、确认兼容性"
+  RISK_DETECTED=true
+fi
+
+# 风险3：缺少测试
+if [ "$NEW_FILES" -gt 0 ] && [ "$TEST_FILES" -eq 0 ]; then
+  echo "   ⚠️  新增代码但缺少测试文件"
+  echo "      → 建议: 补充单元测试、确保覆盖率"
+  RISK_DETECTED=true
+fi
+
+# 风险4：数据库变更缺少迁移
+if [ "$ENTITY_CHANGES" -gt 0 ] && [ "$SQL_FILES" -eq 0 ]; then
+  echo "   ⚠️  Entity 变更但缺少 SQL 迁移文件"
+  echo "      → 建议: 检查是否需要添加迁移脚本"
+  RISK_DETECTED=true
+fi
+
+if [ "$RISK_DETECTED" = false ]; then
+  echo "   ✅ 未检测到明显风险"
+fi
+
+# 生成影响范围报告
+cat > "$IMPACT_REPORT_FILE" << EOF
+# 本期改动影响范围报告
+
+**需求名称**: $REQUIREMENT_NAME
+**分析时间**: $(date '+%Y-%m-%d %H:%M:%S')
+**分析分支**: ${BASE_BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "未知")}
+
+---
+
+## 📊 改动统计
+
+| 类型 | 数量 |
+|------|------|
+| Java 文件 | $NEW_FILES |
+| 测试文件 | $TEST_FILES |
+| 配置文件 | $CONFIG_FILES |
+| SQL 文件 | $SQL_FILES |
+| **总计** | **$TOTAL_CHANGED** |
+
+## 📦 按模块分类
+
+\`\`\`
+$(for module in $MODULES; do
+  count=$(echo "$CHANGED_FILES" | grep -c "/$module/" || echo "0")
+  echo "$module: $count 个文件"
+done)
+\`\`\`
+
+## 📄 改动文件列表
+
+\`\`\`
+$(echo "$CHANGED_FILES" | nl -w2 -s'. ')
+\`\`\`
+
+## 🎯 影响范围
+
+EOF
+
+# 添加详细影响分析到报告
+if [ "$SQL_FILES" -gt 0 ]; then
+  cat >> "$IMPACT_REPORT_FILE" << 'EOF'
+### ⚠️ 数据库变更
+- **影响**: 表结构变更、数据迁移、兼容性风险
+- **建议**: 确认迁移脚本正确性、准备回滚方案
+
+EOF
+fi
+
+if [ "$CONTROLLER_CHANGES" -gt 0 ]; then
+  cat >> "$IMPACT_REPORT_FILE" << 'EOF'
+### ⚠️ API 接口变更
+- **影响**: API 接口行为变化、客户端兼容性
+- **建议**: 检查接口变更、更新 API 文档、通知下游
+
+EOF
+fi
+
+if [ "$SERVICE_CHANGES" -gt 0 ]; then
+  cat >> "$IMPACT_REPORT_FILE" << 'EOF'
+### ⚠️ 业务逻辑变更
+- **影响**: 业务流程变化、事务边界变更
+- **建议**: 审查业务逻辑、确认事务一致性、补充测试
+
+EOF
+fi
+
+if [ "$ENTITY_CHANGES" -gt 0 ]; then
+  cat >> "$IMPACT_REPORT_FILE" << 'EOF'
+### ⚠️ 数据模型变更
+- **影响**: 数据结构变化、序列化兼容性
+- **建议**: 检查字段映射、确认序列化兼容、通知相关方
+
+EOF
+fi
+
+if [ "$COMMON_CHANGES" -gt 0 ]; then
+  cat >> "$IMPACT_REPORT_FILE" << 'EOF'
+### ⚠️ 公共组件变更
+- **影响**: 可能影响多个模块、风险较高
+- **建议**: 全量回归测试、通知所有相关开发
+
+EOF
+fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ 影响范围分析完成"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "📄 详细报告已保存: $IMPACT_REPORT_FILE"
+echo ""
+
+# 询问是否需要查看报告
+echo "💡 提示: 使用以下命令查看完整报告:"
+echo "   cat $IMPACT_REPORT_FILE"
+echo ""
+```
+
+#### 8.6.2 影响等级判断
+
+```bash
+# 根据改动范围判断影响等级
+calculate_impact_level() {
+  local score=0
+
+  # 文件数量评分
+  if [ "$TOTAL_CHANGED" -gt 50 ]; then
+    score=$((score + 5))
+  elif [ "$TOTAL_CHANGED" -gt 20 ]; then
+    score=$((score + 3))
+  elif [ "$TOTAL_CHANGED" -gt 10 ]; then
+    score=$((score + 1))
+  fi
+
+  # 模块数量评分
+  if [ "$MODULE_COUNT" -gt 5 ]; then
+    score=$((score + 5))
+  elif [ "$MODULE_COUNT" -gt 3 ]; then
+    score=$((score + 3))
+  elif [ "$MODULE_COUNT" -gt 1 ]; then
+    score=$((score + 1))
+  fi
+
+  # 数据库变更评分
+  if [ "$SQL_FILES" -gt 0 ]; then
+    score=$((score + 3))
+  fi
+
+  # 公共组件变更评分
+  if [ "$COMMON_CHANGES" -gt 0 ]; then
+    score=$((score + 3))
+  fi
+
+  # 缺少测试扣分
+  if [ "$NEW_FILES" -gt 0 ] && [ "$TEST_FILES" -eq 0 ]; then
+    score=$((score + 2))
+  fi
+
+  # 判断等级
+  if [ $score -ge 10 ]; then
+    echo "🔴 高风险"
+  elif [ $score -ge 5 ]; then
+    echo "🟡 中风险"
+  else
+    echo "🟢 低风险"
+  fi
+}
+
+IMPACT_LEVEL=$(calculate_impact_level)
+echo "🎯 本次改动影响等级: $IMPACT_LEVEL"
+```
+
+#### 8.6.3 影响范围输出格式
+
+**低风险输出：**
+```markdown
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🟢 低风险改动
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 改动统计: 共 5 个文件
+📦 影响模块: 1 个 (user)
+🎯 影响范围: 单模块内部改动
+
+✅ 建议: 常规测试即可上线
+```
+
+**高风险输出：**
+```markdown
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔴 高风险改动
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 改动统计: 共 35 个文件
+📦 影响模块: 5 个 (user, order, payment, common, notification)
+
+⚠️  高风险点:
+   • 跨模块改动 (5个模块)
+   • 公共组件变更 (3个文件)
+   • 缺少测试文件
+
+🚨 建议:
+   1. 进行全量回归测试
+   2. 通知所有相关开发人员
+   3. 准备详细回滚方案
+   4. 建议分批上线
+```
+
+#### 8.6.4 风险检查清单
+
+```bash
+# 风险检查清单
+RISK_CHECKLIST=(
+  "数据库变更:SQL_FILES:0"
+  "API接口变更:CONTROLLER_CHANGES:0"
+  "业务逻辑变更:SERVICE_CHANGES:0"
+  "数据模型变更:ENTITY_CHANGES:0"
+  "公共组件变更:COMMON_CHANGES:0"
+  "缺少测试覆盖:HAS_TESTS:1"
+  "跨模块改动:CROSS_MODULE:1"
+)
+
+echo ""
+echo "📋 风险检查清单:"
+echo ""
+
+for item in "${RISK_CHECKLIST[@]}"; do
+  IFS=':' read -r name var invert <<< "$item"
+  # 检查逻辑...
+done
+```
+
+#### 8.6.5 与下一步衔接
+
+```bash
+# 根据影响等级决定后续流程
+if [[ "$IMPACT_LEVEL" == *"高风险"* ]]; then
+  echo ""
+  echo "🔔 检测到高风险改动，建议执行以下操作:"
+  echo "   1. 运行完整测试套件"
+  echo "   2. 进行代码评审"
+  echo "   3. 准备回滚方案"
+  echo ""
+  echo "是否需要我帮你执行这些操作？[y/N]"
+  read -r -t 30 -p "你的选择: " RUN_EXTRA_CHECKS
+  if [[ "$RUN_EXTRA_CHECKS" =~ ^[yY]$ ]]; then
+    # 执行额外检查
+    run_comprehensive_tests
+  fi
+fi
+```
+
 ### 步骤 9：更新进度
 
 ```bash
@@ -1233,6 +1915,10 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
 | **测试驱动** | 为核心逻辑编写测试 |
 | **独立判断并行** | 分析功能点独立性，决定是否采用并行开发模式 |
 | **并行加速** | 独立功能点使用子 agent 并行开发，节省时间 |
+| **自检循环机制** ⭐ | 代码完成后执行自检，编译失败则自动修复并重试，最多 5 次 |
+| **影响范围分析** ⭐ | 分析本期改动的文件、模块、风险等级 |
+| **风险预警** | 根据影响等级给出测试和上线建议 |
+| **质量底线** | 只有编译和测试全部通过才能标记完成 |
 
 ## 代码规范
 
@@ -1343,5 +2029,12 @@ fi
 - [ ] Service 层已实现
 - [ ] Controller 层已实现
 - [ ] 测试已编写并通过
+- [ ] **自检循环已执行并通过** ⭐
+- [ ] 编译检查通过（最多重试 5 次）
+- [ ] 测试检查通过
+- [ ] **改动影响范围已分析** ⭐
+- [ ] 影响范围报告已保存到 `.impact-report.md`
+- [ ] 风险等级已评估
 - [ ] 质量检查清单已执行
+- [ ] 自检状态已记录到 `.self-check.json`
 - [ ] java-coding 阶段已标记为完成

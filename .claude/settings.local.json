@@ -77,7 +77,17 @@
       "Bash(git config --global --get https.proxy)",
       "Bash(git config --global http.proxy http://127.0.0.1:7890 && git config --global https.proxy http://127.0.0.1:7890)",
       "Bash(git add -A && git status)",
-      "Bash(echo \"Query-4: AI agency/automation\" && gh search repos --limit 50 \"AI agency\" --json name,owner,description,stars,url,updatedAt,primaryLanguage,isArchived,isFork,topics,licenseInfo 2>/dev/null || echo \"API limit or error\")"
+      "Bash(echo \"Query-4: AI agency/automation\" && gh search repos --limit 50 \"AI agency\" --json name,owner,description,stars,url,updatedAt,primaryLanguage,isArchived,isFork,topics,licenseInfo 2>/dev/null || echo \"API limit or error\")",
+      "Bash(python3 /Users/wangyijun/.claude/skills/skill-creator/scripts/init_skill.py video-prompt-generator --path /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills)",
+      "Bash(python3 /Users/wangyijun/.claude/skills/skill-creator/scripts/package_skill.py /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/video-prompt-generator /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills)",
+      "Bash(claude skill install /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/video-prompt-generator.skill)",
+      "Bash(ffmpeg -i \"/Users/wangyijun/Desktop/猫咪工地.mov\" -vf \"select=''''eq\\(n\\\\,0\\)+eq\\(n\\\\,70\\)+eq\\(n\\\\,140\\)+eq\\(n\\\\,210\\)+eq\\(n\\\\,280\\)+eq\\(n\\\\,350\\)''''\" -vsync 0 -qscale:v 2 \"/tmp/猫咪工地_frame_%d.jpg\")",
+      "Bash(cd /tmp && python3 << 'EOF'\nfrom PIL import Image\nimport sys\n\n# 尝试读取第一帧并获取基本信息\ntry:\n    img = Image.open\\(\"猫咪工地_frame_1.jpg\"\\)\n    print\\(f\"尺寸: {img.size}\"\\)\n    print\\(f\"模式: {img.mode}\"\\)\n    \n    # 获取主要颜色\n    from collections import Counter\n    img_small = img.resize\\(\\(50, 50\\)\\)\n    colors = img_small.getcolors\\(maxcolors=100000\\)\n    if colors:\n        sorted_colors = sorted\\(colors, key=lambda x: x[0], reverse=True\\)[:10]\n        print\\(\"\\\\n主要颜色:\"\\)\n        for count, color in sorted_colors[:5]:\n            print\\(f\"  RGB{color} - 占比 {count/2500*100:.1f}%\"\\)\nexcept Exception as e:\n    print\\(f\"错误: {e}\"\\)\nEOF)",
+      "Bash(chmod +x /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/es-operations/run.sh)",
+      "Bash(bash /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/es-operations/run.sh search \"*\" '{\"query\": {\"match_all\": {}}, \"size\": 1}')",
+      "Bash(bash /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/es-operations/run.sh search \"_cat/indices?format=json\" '{}')",
+      "Bash(curl -s -u \"elastic:Xianmu619\" \"http://dev.es.summerfarm.net:80/_cat/indices?format=json&h=index,docs.count,store.size&s=docs.count:desc\" | head -20)",
+      "Bash(bash /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/es-operations/run.sh search \"orders_index\" '{\"query\": {\"match_all\": {}}, \"size\": 2}')"
     ]
   }
 }
