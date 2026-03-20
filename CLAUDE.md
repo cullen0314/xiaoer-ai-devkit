@@ -7,7 +7,7 @@
 ## 核心约定
 
 - 所有 Commands 前缀使用 `xe:`
-- 所有 Agents 使用 `xe-` 前缀
+- 所有 Agents 使用 `agent-` 前缀
 - 所有 Skills 使用小写+连字符命名
 
 ## 目录说明
