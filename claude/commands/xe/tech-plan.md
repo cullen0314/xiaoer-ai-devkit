@@ -18,11 +18,37 @@ argument-hint: "飞书PRD链接 [辅助说明]"
 
 ## 工作目标
 
-根据飞书 PRD 文档生成结构化的技术设计文档，保存到 `./docs/{需求名称}/技术设计.md`
+根据飞书 PRD 文档生成结构化的技术设计文档，保存到 `./docs/{需求名称}/技术设计.md`。
+
+本命令负责流程编排，最终应消费 `agent-xe-tech-plan` 返回的结构化状态：
+
+- `completed`：技术设计完成，可进入 `task-list` 或实现阶段
+- `need_clarification`：需求不明确，继续等待用户补充
+- `waiting_for_approval`：某段设计已输出，等待用户确认
+- `execution_failed`：执行失败，需要处理环境或依赖问题
 
 ## 工作流程
 
+### 状态分支处理约定
+
+本命令作为编排层，必须按 `agent-xe-tech-plan` 的结构化状态处理结果：
+
+| status | 处理方式 |
+|--------|----------|
+| `completed` | 输出文档路径、状态文件路径，并提示可进入 `task-list` 或后续实现阶段 |
+| `need_clarification` | 停止当前流程，向用户展示澄清问题，等待补充后继续 |
+| `waiting_for_approval` | 停止当前流程，向用户展示待确认段落，等待用户确认或修改意见 |
+| `execution_failed` | 停止当前流程，输出失败原因和建议，不进入下一阶段 |
+
+编排原则：
+
+- command 不自行推断 agent 是否完成，必须以 `status` 为准
+- 当 `status` 不是 `completed` 时，不得推进到实现阶段
+- 当 `next_action=task-list` 时，才允许提示进入任务拆解或实现链路
+
 ### 步骤 1：解析输入
+
+解析完成后，应将 PRD 链接和辅助说明传递给 `agent-xe-tech-plan`，并以其返回的结构化状态作为唯一真相源。
 
 分析用户输入，提取：
 - PRD 文档链接（飞书链接）

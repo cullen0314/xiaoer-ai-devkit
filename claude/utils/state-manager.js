@@ -6,7 +6,7 @@
  *
  * 使用方式：
  * node claude/utils/state-manager.js init <requirementName> <prdUrl> <description>
- * node claude/utils/state-manager.js update <requirementName> <stageName> <status> [output]
+ * node claude/utils/state-manager.js update <requirementName> <stageName> <status> [output] [metadataJson]
  * node claude/utils/state-manager.js decision <requirementName> <decision>
  * node claude/utils/state-manager.js get <requirementName>
  * node claude/utils/state-manager.js list
@@ -37,6 +37,10 @@ class StateManager {
         created_at: new Date().toISOString()
       },
       current_stage: 'tech-plan',
+      current_substage: 'initializing',
+      next_action: 'read_prd',
+      approved_sections: [],
+      artifacts: {},
       stages: {
         'tech-plan': { status: 'in_progress' },
         'task-list': { status: 'pending' },
@@ -66,6 +70,22 @@ class StateManager {
       ...metadata
     };
 
+    if (metadata.substage) {
+      state.current_substage = metadata.substage;
+    }
+    if (metadata.next_action) {
+      state.next_action = metadata.next_action;
+    }
+    if (metadata.artifacts && typeof metadata.artifacts === 'object') {
+      state.artifacts = {
+        ...(state.artifacts || {}),
+        ...metadata.artifacts
+      };
+    }
+    if (Array.isArray(metadata.approved_sections)) {
+      state.approved_sections = metadata.approved_sections;
+    }
+
     // 更新当前阶段
     if (status === 'completed') {
       const stageOrder = ['tech-plan', 'task-list', 'tdd-implementation', 'code-execution'];
@@ -92,6 +112,27 @@ class StateManager {
       text: decision,
       timestamp: new Date().toISOString()
     });
+    this._write(state);
+    return state;
+  }
+
+  updateMeta(metadata = {}) {
+    const state = this.get();
+    if (metadata.current_substage) {
+      state.current_substage = metadata.current_substage;
+    }
+    if (metadata.next_action) {
+      state.next_action = metadata.next_action;
+    }
+    if (metadata.artifacts && typeof metadata.artifacts === 'object') {
+      state.artifacts = {
+        ...(state.artifacts || {}),
+        ...metadata.artifacts
+      };
+    }
+    if (Array.isArray(metadata.approved_sections)) {
+      state.approved_sections = metadata.approved_sections;
+    }
     this._write(state);
     return state;
   }
@@ -213,14 +254,25 @@ if (require.main === module) {
     const stageName = args[2];
     const status = args[3];
     const output = args[4] || null;
+    const metadataJson = args[5] || null;
 
     if (!requirementName || !stageName || !status) {
-      console.error('Usage: node state-manager.js update <requirementName> <stageName> <status> [output]');
+      console.error('Usage: node state-manager.js update <requirementName> <stageName> <status> [output] [metadataJson]');
       process.exit(1);
     }
 
+    let metadata = {};
+    if (metadataJson) {
+      try {
+        metadata = JSON.parse(metadataJson);
+      } catch (e) {
+        console.error(`Invalid metadata JSON: ${metadataJson}`);
+        process.exit(1);
+      }
+    }
+
     const manager = new StateManager(requirementName);
-    const state = manager.updateStage(stageName, status, output);
+    const state = manager.updateStage(stageName, status, output, metadata);
     console.log(JSON.stringify(state, null, 2));
   } else if (command === 'decision') {
     const requirementName = args[1];
@@ -233,6 +285,26 @@ if (require.main === module) {
 
     const manager = new StateManager(requirementName);
     const state = manager.addDecision(decision);
+    console.log(JSON.stringify(state, null, 2));
+  } else if (command === 'meta') {
+    const requirementName = args[1];
+    const metadataJson = args[2];
+
+    if (!requirementName || !metadataJson) {
+      console.error('Usage: node state-manager.js meta <requirementName> <metadataJson>');
+      process.exit(1);
+    }
+
+    let metadata = {};
+    try {
+      metadata = JSON.parse(metadataJson);
+    } catch (e) {
+      console.error(`Invalid metadata JSON: ${metadataJson}`);
+      process.exit(1);
+    }
+
+    const manager = new StateManager(requirementName);
+    const state = manager.updateMeta(metadata);
     console.log(JSON.stringify(state, null, 2));
   } else if (command === 'get') {
     const requirementName = args[1];

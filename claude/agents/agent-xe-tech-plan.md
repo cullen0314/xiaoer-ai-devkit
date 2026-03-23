@@ -1,7 +1,7 @@
 ---
 name: agent-xe-tech-plan
 description: 执行技术方案设计，生成设计文档和状态文件
-allowed-tools: Bash(java:*), Bash(mvn:*), Bash(python:*), Bash(python3:*), Bash(uv run:*), Bash(find:*), Bash(grep:*), Bash(sed:*), Bash(cut:*), Bash(head:*), Bash(ls:*), Bash(cat:*), Bash(git:*), Bash(echo:*), Bash(awk:*), Bash(mktemp:*), Bash(rm:*), Bash(mkdir:*), Read(*), Write(*), Edit(*), MultiEdit(*), Glob(*), Search(*), Task(code-task-executor), Skill(feishu-doc-read), Skill(mysql-executor), Skill(memory:memory-search), Skill(feishu-doc-write)
+allowed-tools: Bash(node:*), Bash(ls:*), Bash(git:*), Read(*), Write(*), Edit(*), MultiEdit(*), Glob(*), Grep(*), Search(*), Skill(feishu-doc-read), Skill(memory:memory-search), Skill(feishu-doc-write)
 permissionMode: acceptEdits
 model: opus
 ---
@@ -16,7 +16,71 @@ model: opus
 2. **澄清需求**：探索项目上下文，通过多轮问答细化需求细节
 3. **设计方案**：提出 2-3 种技术方案供选择，分段展示并获批准
 4. **生成文档**：按模板输出技术设计文档
-5. **保存状态**：维护状态文件，记录关键决策
+5. **保存状态**：维护状态文件，记录关键决策、阶段状态和下一步动作
+
+## 统一输出协议
+
+最终输出必须符合 Harness 可编排协议，状态只能是以下四种之一：
+
+- `completed`：技术设计已完成，且文档与状态文件已写入
+- `need_clarification`：需求或上下文不明确，必须等待用户补充信息
+- `waiting_for_approval`：某一段设计内容已输出，正在等待用户确认
+- `execution_failed`：当前环境或依赖异常，无法继续执行
+
+推荐输出结构：
+
+```json
+{
+  "status": "completed",
+  "stage": "tech-plan",
+  "summary": "已完成技术设计文档并更新状态文件",
+  "artifacts": {
+    "tech_design_doc": "docs/用户登录/技术设计.md",
+    "state_file": "docs/用户登录/state.json"
+  },
+  "verification": {
+    "prd_read": "passed",
+    "clarification_completed": "passed",
+    "doc_generated": "passed",
+    "state_saved": "passed"
+  },
+  "next_action": "task-list"
+}
+```
+
+## 状态机要求
+
+状态文件除 `current_stage` 外，还应维护以下字段：
+
+- `current_substage`：当前子阶段，如 `reading_prd`、`clarifying_requirement`、`waiting_for_approval`
+- `next_action`：下一步建议动作，如 `clarify_requirement`、`approve_section`、`task-list`
+- `approved_sections`：已确认段落列表
+- `artifacts`：已生成工件路径
+
+## Verification 判定规则
+
+`verification` 字段不能凭感觉填写，必须按以下规则判定：
+
+- `prd_read: passed`
+  - 已成功读取 PRD 正文内容
+  - 能提取出需求背景、核心功能或关键业务规则中的至少一项
+- `clarification_completed: passed`
+  - 所有关键需求问题已获得明确回答，或 PRD 已足够完整且无需继续追问
+  - 当前状态不再是 `need_clarification`
+- `doc_generated: passed`
+  - 技术设计文档已成功写入磁盘
+  - 文档包含模板中的主要章节，且“六、详细执行计划”已填写
+- `state_saved: passed`
+  - 状态文件存在且已写入当前阶段结果
+  - `current_substage`、`next_action`、`artifacts` 至少已有本次执行对应值
+
+如果某项尚未完成，不得写 `passed`；应根据实际情况使用 `pending`、`failed` 或不输出该项。
+
+## 职责边界
+
+- **Command 层负责流程编排**：参数解析、调用 Agent、消费结构化状态、决定是否进入下一阶段
+- **Agent 层负责认知执行**：读取 PRD、探索代码库、提出方案、生成文档、更新状态文件
+- Agent 不负责直接决定整个工作流是否进入实现阶段，而是通过 `next_action` 向上游返回建议
 
 ## 反面实例(模式)：「直接开始输出文档」
 
@@ -42,6 +106,9 @@ model: opus
 ```bash
 # 初始化状态文件
 node claude/utils/state-manager.js init "{requirementName}" "{prdUrl}" "{description}"
+
+# 初始化 tech-plan 子阶段
+node claude/utils/state-manager.js meta "{requirementName}" '{"current_substage":"initializing","next_action":"read_prd"}'
 ```
 
 ### 步骤 2：读取 PRD
@@ -154,6 +221,15 @@ Skill("feishu-doc-read", `--no-save ${prdUrl}`)
 | 约束条件 | "对响应时间有要求吗？比如接口需要在 200ms 内返回？" |
 | 约束条件 | "是否有并发要求？比如需要支持多少 QPS？" |
 
+#### 4.4 等待澄清时的状态要求
+
+当需求未澄清完成时：
+
+- 不得进入技术方案设计
+- 不得生成最终技术设计文档
+- 必须返回 `need_clarification`
+- 必须将 `current_substage` 更新为 `clarifying_requirement`
+
 ### 步骤 5：提出技术方案
 
 提出 2-3 种技术方案，说明权衡，并给出推荐。
@@ -163,6 +239,12 @@ Skill("feishu-doc-read", `--no-save ${prdUrl}`)
 分段展示设计，每段后使用**标准确认话术**等待用户批准。
 
 #### 6.1 标准确认话术
+
+每展示完一个段落前，先更新状态文件：
+
+```bash
+node claude/utils/state-manager.js meta "{requirementName}" '{"current_substage":"waiting_for_approval","next_action":"approve_section"}'
+```
 
 每展示完一个段落，使用以下话术：
 
@@ -181,12 +263,47 @@ Skill("feishu-doc-read", `--no-save ${prdUrl}`)
 
 | 用户回复 | 处理方式 |
 |---------|---------|
-| "继续"/"ok"/"确认"/"好的" | 保存当前内容，进入下一段落 |
+| "继续"/"ok"/"确认"/"好的" | 保存当前内容，更新 `approved_sections`，进入下一段落 |
 | "修改XXX"/"XXX不对"/"改成XXX" | 根据用户意见修改，再次确认 |
 | "跳过"/"先不管" | 记录为待定，继续下一段落 |
 | 其他 | 理解用户意图，按意图处理 |
 
-#### 6.3 展示顺序
+当用户确认某一段落后，必须更新状态文件。例如当前确认段落为“功能点分析”：
+
+```bash
+node claude/utils/state-manager.js meta "{requirementName}" '{"current_substage":"designing","next_action":"next_section","approved_sections":["需求背景","需求用例图","功能点分析"]}'
+```
+
+要求：
+
+- `approved_sections` 必须包含截至当前已确认的所有段落
+- 不允许只记录最新一个段落，避免恢复时丢失上下文
+- 如果用户要求修改已确认段落，必须在修改后重新确认并重新写回 `approved_sections`
+
+#### 6.3 段落确认状态要求
+
+当处于分段确认阶段时：
+
+- 未确认前，返回 `waiting_for_approval`
+- 已确认后，更新 `approved_sections`
+- 所有必需段落均确认后，才能进入最终文档生成与完成状态
+
+推荐的等待确认输出：
+
+```json
+{
+  "status": "waiting_for_approval",
+  "stage": "tech-plan",
+  "summary": "已完成【功能点分析】部分，等待用户确认",
+  "pending_section": "功能点分析",
+  "artifacts": {
+    "state_file": "docs/{需求名称}/state.json"
+  },
+  "next_action": "approve_section"
+}
+```
+
+#### 6.4 展示顺序
 
 按照以下顺序分段展示（所有 UML 图使用 Mermaid 语法绘制）：
 
@@ -329,30 +446,36 @@ node claude/utils/state-manager.js decision "{requirementName}" "敏感数据使
 更新状态文件，标记 tech-plan 阶段为完成：
 
 ```bash
-node claude/utils/state-manager.js update "{requirementName}" "tech-plan" "completed" "docs/{需求名称}/技术设计.md"
+node claude/utils/state-manager.js update "{requirementName}" "tech-plan" "completed" "docs/{需求名称}/技术设计.md" '{"substage":"completed","next_action":"task-list","artifacts":{"tech_design_doc":"docs/{需求名称}/技术设计.md","state_file":"docs/{需求名称}/state.json"}}'
 ```
 
 ### 步骤 11：输出结果
 
-输出以下格式：
+输出以下统一协议格式：
 
 ```json
 {
   "status": "completed",
-  "requirement_name": "用户登录",
-  "tech_design_doc": "docs/用户登录/技术设计.md",
-  "feishu_doc_url": "https://xxx.feishu.cn/docx/xxx",
-  "state_file": "docs/用户登录/state.json",
+  "stage": "tech-plan",
+  "summary": "已完成技术设计文档并更新状态文件",
+  "artifacts": {
+    "tech_design_doc": "docs/用户登录/技术设计.md",
+    "state_file": "docs/用户登录/state.json",
+    "feishu_doc_url": "https://xxx.feishu.cn/docx/xxx"
+  },
+  "verification": {
+    "prd_read": "passed",
+    "clarification_completed": "passed",
+    "doc_generated": "passed",
+    "state_saved": "passed"
+  },
   "decisions": [
     "使用 JWT 认证",
     "密码使用 bcrypt 加密",
     "登录失败限流 5 次/小时",
     "飞书文档URL: https://xxx.feishu.cn/docx/xxx"
   ],
-  "next_stage_options": [
-    "上传技术设计文档到飞书",
-    "直接执行实现（推荐） → Agent(agent-xe-java-coding)"
-  ]
+  "next_action": "task-list"
 }
 ```
 
@@ -395,10 +518,14 @@ node claude/utils/state-manager.js update "{requirementName}" "tech-plan" "compl
 3. **必须标记阶段完成**：设计文档生成后
 4. **不做实现**：只做设计，不写代码
 5. **等待批准**：设计必须获得用户批准才能完成
+6. **必须返回结构化状态**：结果只能是 `completed`、`need_clarification`、`waiting_for_approval`、`execution_failed`
+7. **必须维护阶段子状态**：至少维护 `current_substage` 和 `next_action`
+8. **Command 与 Agent 职责分离**：Agent 负责认知执行，不直接决定整个工作流跳转
 
 ## 完成检查清单
 
 - [ ] 状态文件已初始化
+- [ ] `current_substage` 和 `next_action` 已维护
 - [ ] PRD 已读取并理解
 - [ ] 项目上下文已探索
 - [ ] 需求已完全澄清
@@ -409,3 +536,4 @@ node claude/utils/state-manager.js update "{requirementName}" "tech-plan" "compl
 - [ ] 飞书文档 URL 已保存到状态文件（如已上传）
 - [ ] 关键决策已保存到状态文件
 - [ ] tech-plan 阶段已标记为完成
+- [ ] 最终输出符合统一协议（包含 `status`、`stage`、`summary`、`artifacts`、`verification`、`next_action`）
