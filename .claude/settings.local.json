@@ -124,7 +124,12 @@
       "Bash(zsh -lc 'ls -1 \"$HOME/.n/versions/node\" 2>/dev/null || true')",
       "Bash(zsh -lic 'n 22 && hash -r && source ~/.zshrc && node -v && which node && claude --version && which claude')",
       "Bash(zsh -lic 'source ~/.zshrc >/dev/null 2>&1; node -v; claude --version; type cc-jishubu; timeout 10 cc-jishubu --version')",
-      "Bash(bash ~/.claude/skills/feishu-doc-read/run.sh --no-save \"https://waytoagi.feishu.cn/wiki/DFsjwYahxiYtVfkteSycorfnnBc\")"
+      "Bash(bash ~/.claude/skills/feishu-doc-read/run.sh --no-save \"https://waytoagi.feishu.cn/wiki/DFsjwYahxiYtVfkteSycorfnnBc\")",
+      "Bash(bash -n \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/mysql-executor/run.sh\")",
+      "Bash(printf '1\\\\n')",
+      "Bash(bash \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/mysql-executor/run.sh\" --help)",
+      "Bash(printf '2\\\\n')",
+      "Bash(bash \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/mysql-executor/run.sh\" \"SELECT 1 AS ok\")"
     ]
   }
 }

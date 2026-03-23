@@ -4,12 +4,15 @@
 
 ## 功能特性
 
-- ✅ 支持 SELECT 查询（自动执行）
+- ✅ 支持多数据源连接
+- ✅ 每次启动先选择目标数据库
+- ✅ 支持 SELECT、SHOW 查询（自动执行）
 - ✅ 支持 INSERT/UPDATE 操作（需要用户确认）
 - ❌ 禁止 DELETE、DROP、TRUNCATE 等高危操作
 - ❌ 禁止 ALTER TABLE、CREATE TABLE 等 DDL 操作
 - 🔧 自动检测并安装 MySQL 客户端
 - 📊 支持表格和 Markdown 格式输出
+- 🔍 自动扫描 Spring Boot 项目中的数据库配置
 
 ## 安装
 
@@ -27,6 +30,7 @@ bash ~/.claude/skills/mysql-executor/run.sh "SQL 语句" [选项]
 
 - `--markdown`: 使用 Markdown 格式输出查询结果（默认，适合 AI 读取，节省 Token）
 - `--table`: 使用表格格式输出查询结果（适合人类阅读）
+- `--project-dir`: 指定项目目录，用于扫描 Spring Boot 数据源配置
 
 ### 使用示例
 
@@ -36,10 +40,34 @@ bash ~/.claude/skills/mysql-executor/run.sh "SQL 语句" [选项]
 bash ~/.claude/skills/mysql-executor/run.sh "SELECT * FROM users LIMIT 10"
 ```
 
+启动后会先展示数据源列表，例如：
+
+```text
+请选择要连接的数据库：
+
+1) 默认库
+   数据库: xianmudb
+   地址: mysql-xm.summerfarm.net:3308
+   用户: dev2
+   来源: builtin-default
+
+2) 离线库
+   数据库: xianmu_offline_db
+   地址: mysql-8.summerfarm.net:3307
+   用户: dev
+   来源: builtin-offline
+```
+
 **使用表格格式输出（适合人类阅读）：**
 
 ```bash
 bash ~/.claude/skills/mysql-executor/run.sh --table "SELECT * FROM users LIMIT 10"
+```
+
+**指定项目目录并扫描项目数据源：**
+
+```bash
+bash ~/.claude/skills/mysql-executor/run.sh --project-dir /path/to/project "SELECT * FROM users LIMIT 10"
 ```
 
 **更新数据（需要确认）：**
@@ -49,24 +77,21 @@ bash ~/.claude/skills/mysql-executor/run.sh "UPDATE users SET status = 1 WHERE i
 ```
 
 输出示例：
-```
+```text
+请选择要连接的数据库：
+...
+
+✅ 已选择数据源: 离线库
+📍 目标数据库: xianmu_offline_db @ mysql-8.summerfarm.net:3307
+
 ⚠️  警告: 即将执行以下 SQL 语句：
 
 UPDATE users SET status = 1 WHERE id = 100
 
+目标数据库: xianmu_offline_db @ mysql-8.summerfarm.net:3307
+数据源名称: 离线库
+
 此操作将修改数据库数据，是否继续？(输入 yes 确认)
-```
-
-**插入数据（需要确认）：**
-
-```bash
-bash ~/.claude/skills/mysql-executor/run.sh "INSERT INTO users (name, email) VALUES ('张三', 'zhangsan@example.com')"
-```
-
-**查看帮助：**
-
-```bash
-bash ~/.claude/skills/mysql-executor/run.sh --help
 ```
 
 ## 安全限制
@@ -76,6 +101,7 @@ bash ~/.claude/skills/mysql-executor/run.sh --help
 | 操作类型 | 确认要求 | 说明 |
 |---------|---------|------|
 | SELECT  | 无需确认 | 查询数据，只读操作 |
+| SHOW    | 无需确认 | 查看元数据或状态 |
 | INSERT  | 需要确认 | 插入新数据 |
 | UPDATE  | 需要确认 | 更新现有数据 |
 
@@ -91,13 +117,34 @@ bash ~/.claude/skills/mysql-executor/run.sh --help
 
 ## 数据库连接配置
 
-连接参数已内置在脚本中：
+脚本会在每次启动时展示候选数据源，候选项来源包括：
 
-- **主机**: mysql-xm.summerfarm.net
-- **端口**: 3308
-- **数据库**: xianmudb
-- **用户名**: dev2
-- **字符集**: UTF-8
+### 内置数据源
+
+1. **默认库**
+   - 主机: `mysql-xm.summerfarm.net`
+   - 端口: `3308`
+   - 数据库: `xianmudb`
+   - 用户名: `dev2`
+
+2. **离线库**
+   - 主机: `mysql-8.summerfarm.net`
+   - 端口: `3307`
+   - 数据库: `xianmu_offline_db`
+   - 用户名: `dev`
+
+### 项目自动扫描数据源
+
+脚本会在指定项目目录中按以下优先级扫描 Spring Boot 配置：
+
+1. `application-dev2.yml`
+2. `application-dev.yml`
+3. `application.yml`
+
+支持识别的配置键包括：
+- `spring.datasource.url`
+- `spring.datasource.druid.url`
+- `spring.datasource.dynamic.datasource.master.url`
 
 ## 自动安装
 
@@ -111,26 +158,27 @@ bash ~/.claude/skills/mysql-executor/run.sh --help
 
 当用户请求执行 SQL 时，直接调用脚本：
 
-```
+```text
 用户：查询用户表中状态为活跃的用户
 
 Claude：我会帮你查询活跃用户。
 [执行] bash ~/.claude/skills/mysql-executor/run.sh "SELECT * FROM users WHERE status = 'active' LIMIT 20"
 ```
 
-```
+```text
 用户：将用户 ID 为 123 的状态更新为已验证
 
-Claude：我会更新该用户状态，需要您确认后执行。
+Claude：我会更新该用户状态，需要您先选择数据库并确认后执行。
 [执行] bash ~/.claude/skills/mysql-executor/run.sh "UPDATE users SET status = 'verified' WHERE id = 123"
 ```
 
 ## 注意事项
 
 1. **使用 LIMIT**: 建议在 SELECT 查询中使用 LIMIT 限制结果数量
-2. **确认机制**: INSERT/UPDATE 操作会提示确认，输入 `yes` 后才会执行
-3. **安全优先**: 所有高危操作都会被拒绝，无法绕过
-4. **字符编码**: 默认使用 UTF-8 编码，支持中文
+2. **启动先选库**: 每次启动都会展示数据源列表，需先选择目标数据库
+3. **确认机制**: INSERT/UPDATE 操作会提示确认，输入 `yes` 后才会执行
+4. **安全优先**: 所有高危操作都会被拒绝，无法绕过
+5. **字符编码**: 默认使用 UTF-8 编码，支持中文
 
 ## 故障排除
 
@@ -160,6 +208,11 @@ sudo yum install mysql
 检查网络连接和数据库服务器状态：
 ```bash
 telnet mysql-xm.summerfarm.net 3308
+```
+
+也可以检查离线库连通性：
+```bash
+telnet mysql-8.summerfarm.net 3307
 ```
 
 ## 许可证
