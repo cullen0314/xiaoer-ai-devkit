@@ -34,6 +34,156 @@ model: sonnet
 
 6. **保存进度**：更新状态文件记录进度
 
+## Harness 输出协议
+
+本 Agent 必须输出可被 Harness 编排层稳定消费的结构化结果，禁止只输出零散说明后结束。
+
+### 统一输出字段
+
+最终输出必须包含以下字段：
+
+- `status`：只能是 `completed`、`need_clarification`、`waiting_for_approval`、`execution_failed`
+- `stage`：固定为 `java-coding`
+- `summary`：一句话总结当前结果
+- `verification`：记录关键动作是否完成
+- `artifacts`：产物路径，如技术设计文档、状态文件、自检文件、影响分析报告
+- `next_action`：建议编排层下一步动作
+
+推荐输出外壳：
+
+```json
+{
+  "status": "completed",
+  "stage": "java-coding",
+  "summary": "已完成代码实现并通过编译与测试",
+  "verification": {
+    "tech_plan_loaded": "passed",
+    "requirement_confirmed": "passed",
+    "code_implemented": "passed",
+    "quality_checks_passed": "passed",
+    "state_saved": "passed"
+  },
+  "artifacts": {
+    "tech_design_doc": "docs/用户登录/技术设计.md",
+    "state_file": "docs/用户登录/state.json",
+    "self_check_file": "docs/用户登录/.self-check.json",
+    "impact_report": "docs/用户登录/.impact-report.md"
+  },
+  "next_action": "unit-test"
+}
+```
+
+## 标准状态分支
+
+### 1. completed
+
+仅在以下条件全部满足时返回：
+
+- 技术设计文档已定位并读取
+- 需求和改动范围已确认
+- 代码已完成实现
+- 自检、编译、测试达到当前任务要求
+- 状态文件已更新
+
+### 2. need_clarification
+
+出现以下任一情况时必须停止编码并返回：
+
+- 找不到技术设计文档或无法唯一定位目标文档
+- 需求描述、执行阶段、表名、接口边界等关键输入缺失
+- 代码库中无法定位对应模块，无法确认应修改位置
+- 技术设计文档与现有代码实现明显冲突，无法自行裁决
+
+推荐格式：
+
+```json
+{
+  "status": "need_clarification",
+  "stage": "java-coding",
+  "summary": "缺少继续编码所需的关键信息",
+  "questions": [
+    "请确认本次要执行的技术设计文档路径。",
+    "请确认本次只实现 service 阶段还是完整 all 阶段。"
+  ],
+  "verification": {
+    "tech_plan_loaded": "failed",
+    "requirement_confirmed": "failed",
+    "code_implemented": "not_run",
+    "quality_checks_passed": "not_run",
+    "state_saved": "not_run"
+  },
+  "next_action": "clarify_requirement"
+}
+```
+
+### 3. waiting_for_approval
+
+当已经完成理解、风险识别或关键实现方案整理，但需要用户确认后才能继续时返回，禁止使用 shell `read -t` 阻塞等待。
+
+适用场景：
+
+- 自动发现到多个技术设计文档，需用户确认目标文档
+- 发现可并行开发，但是否并行需要用户确认
+- 发现高风险改动，需要用户确认是否继续做额外检查或继续编码
+- 对需求理解、业务逻辑理解存在多个合理实现方向
+
+推荐格式：
+
+```json
+{
+  "status": "waiting_for_approval",
+  "stage": "java-coding",
+  "summary": "已完成需求理解，等待用户确认后进入编码",
+  "pending_decision": "confirm_requirement_understanding",
+  "options": [
+    "确认理解并继续",
+    "补充说明后重新分析",
+    "取消本次执行"
+  ],
+  "verification": {
+    "tech_plan_loaded": "passed",
+    "requirement_confirmed": "pending",
+    "code_implemented": "not_run",
+    "quality_checks_passed": "not_run",
+    "state_saved": "pending"
+  },
+  "next_action": "approve_or_revise"
+}
+```
+
+### 4. execution_failed
+
+当当前环境无法继续执行时返回，不得伪造完成结果：
+
+- 构建命令不可用
+- 必需依赖缺失
+- 编译/测试多轮修复后仍失败
+- 状态文件无法写入
+- 并行子 Agent 启动失败且当前任务无法降级处理
+
+推荐格式：
+
+```json
+{
+  "status": "execution_failed",
+  "stage": "java-coding",
+  "summary": "构建检查失败，当前无法继续自动修复",
+  "reason": "compile_failed_after_retries",
+  "details": {
+    "retry_count": 5,
+    "build_cmd": "./gradlew compileJava"
+  },
+  "verification": {
+    "tech_plan_loaded": "passed",
+    "requirement_confirmed": "passed",
+    "code_implemented": "passed",
+    "quality_checks_passed": "failed",
+    "state_saved": "failed"
+  },
+  "next_action": "inspect_build_errors"
+}
+```
+
 ## 执行流程
 
 ### 步骤 1：初始化并自动发现技术方案
@@ -122,15 +272,28 @@ fi
 
 # 检查是否找到文档
 if [ -z "$SELECTED_DOC" ] || [ ! -f "$SELECTED_DOC" ]; then
-  echo "❌ 未找到技术设计文档"
-  echo ""
-  echo "请通过以下方式之一提供："
-  echo "  1. 指定 docPath 参数"
-  echo "  2. 指定 requirementName 参数"
-  echo "  3. 在对应分支下工作（feature/{{需求名称}}）"
-  echo ""
-  echo "💡 提示：运行 tech-plan agent 生成技术设计文档"
-  exit 1
+  输出 need_clarification，而不是直接退出：
+
+```json
+{
+  "status": "need_clarification",
+  "stage": "java-coding",
+  "summary": "未找到可执行的技术设计文档",
+  "questions": [
+    "请提供 docPath，或确认 requirementName 对应的技术设计文档已生成。"
+  ],
+  "verification": {
+    "tech_plan_loaded": "failed",
+    "requirement_confirmed": "failed",
+    "code_implemented": "not_run",
+    "quality_checks_passed": "not_run",
+    "state_saved": "not_run"
+  },
+  "next_action": "provide_tech_plan"
+}
+```
+
+停止后续执行。
 fi
 
 # 输出选择的文档
@@ -189,22 +352,34 @@ cat << EOF
 
 EOF
 
-# 等待用户确认（带默认值和超时）
-echo "请确认以上信息是否正确："
-echo "  [Enter] 继续（默认）"
-echo "  [c]     取消"
-echo ""
-read -r -t 30 -p "你的选择 [默认继续]: " CONFIRM
-CONFIRM=${CONFIRM:-continue}  # 空输入或超时默认为 continue
+此处不得使用 shell `read -t` 阻塞等待用户输入。
 
-if [[ "$CONFIRM" =~ ^[cC]$ ]]; then
-  echo "❌ 用户取消执行"
-  exit 0
-fi
+应改为输出 `waiting_for_approval`：
 
-echo ""
-echo "✅ 开始执行..."
-echo ""
+```json
+{
+  "status": "waiting_for_approval",
+  "stage": "java-coding",
+  "summary": "已加载技术方案并完成基础信息识别，等待用户确认",
+  "pending_decision": "confirm_selected_doc_and_scope",
+  "context": {
+    "selected_doc": "${SELECTED_DOC}",
+    "found_by": "${FOUND_BY}",
+    "requirement_name": "${REQUIREMENT_NAME}",
+    "stage": "${STAGE:-all}"
+  },
+  "verification": {
+    "tech_plan_loaded": "passed",
+    "requirement_confirmed": "pending",
+    "code_implemented": "not_run",
+    "quality_checks_passed": "not_run",
+    "state_saved": "pending"
+  },
+  "next_action": "approve_or_cancel"
+}
+```
+
+等待编排层或用户明确确认后再继续。
 ```
 
 **重点阅读章节：**
@@ -366,30 +541,50 @@ Entity：{{EntityName}}
   [c]     取消执行
 ```
 
-**等待用户输入：**
+此处不得通过 shell 交互等待用户输入。
 
-```bash
-read -r -t 60 -p "你的选择 [默认继续]: " CONFIRM
-CONFIRM=${CONFIRM:-continue}  # 默认继续
+- 若存在澄清问题，返回 `need_clarification`
+- 若只是等待用户确认理解，返回 `waiting_for_approval`
 
-if [[ "$CONFIRM" =~ ^[1]$ ]]; then
-  echo "请描述需要澄清的问题："
-  read -r -t 120 -p "问题描述: " QUESTION
-  QUESTION=${QUESTION:-}
-  echo "❓ 问题已记录：$QUESTION"
-  echo "请补充说明，我将根据您的回答重新理解需求..."
-  # 等待用户补充说明
-  read -r -t 120 -p "按 Enter 继续..."
-  # 重新理解...
-  return
-elif [[ "$CONFIRM" =~ ^[cC]$ ]]; then
-  echo "❌ 用户取消执行"
-  exit 0
-fi
+推荐返回：
 
-echo ""
-echo "✅ 理解正确，开始开发..."
-echo ""
+```json
+{
+  "status": "waiting_for_approval",
+  "stage": "java-coding",
+  "summary": "已完成需求理解与改动范围分析，等待用户确认",
+  "pending_decision": "confirm_requirement_understanding",
+  "verification": {
+    "tech_plan_loaded": "passed",
+    "requirement_confirmed": "pending",
+    "code_implemented": "not_run",
+    "quality_checks_passed": "not_run",
+    "state_saved": "pending"
+  },
+  "next_action": "approve_or_revise"
+}
+```
+
+如果存在未解决问题，则改为：
+
+```json
+{
+  "status": "need_clarification",
+  "stage": "java-coding",
+  "summary": "需求理解仍存在未澄清项，暂不进入编码",
+  "questions": [
+    "请确认接口是否需要向后兼容旧字段。",
+    "请确认本次是否包含数据库结构变更。"
+  ],
+  "verification": {
+    "tech_plan_loaded": "passed",
+    "requirement_confirmed": "failed",
+    "code_implemented": "not_run",
+    "quality_checks_passed": "not_run",
+    "state_saved": "pending"
+  },
+  "next_action": "clarify_requirement"
+}
 ```
 
 ### 步骤 4：熟悉相关模块业务逻辑
@@ -532,36 +727,53 @@ done
   [c]     取消执行
 ```
 
-**等待用户输入：**
+此处同样不得通过 shell 阻塞等待用户反馈。
 
-```bash
-read -r -t 60 -p "你的选择 [默认继续]: " CONFIRM
-CONFIRM=${CONFIRM:-continue}  # 默认继续
+应根据情况返回：
 
-if [[ "$CONFIRM" =~ ^[1]$ ]]; then
-  echo "请描述需要澄清的问题："
-  read -r -t 120 -p "问题描述: " QUESTION
-  QUESTION=${QUESTION:-}
-  echo "❓ 问题已记录：$QUESTION"
-  echo "请补充说明，我将根据您的回答重新理解..."
-  read -r -t 120 -p "按 Enter 继续..."
-  # 重新理解...
-  return
-elif [[ "$CONFIRM" =~ ^[mM]$ ]]; then
-  echo "📝 请提供更多说明："
-  read -r -t 120 -p "说明内容: " MORE_INFO
-  MORE_INFO=${MORE_INFO:-}
-  echo "✅ 已收到补充说明，重新分析..."
-  # 重新理解...
-  return
-elif [[ "$CONFIRM" =~ ^[cC]$ ]]; then
-  echo "❌ 用户取消执行"
-  exit 0
-fi
+1. **业务理解需要确认** → `waiting_for_approval`
+2. **业务规则仍不明确** → `need_clarification`
+3. **用户明确取消** → 由编排层终止流程，不在 Agent 内用 shell 退出模拟交互
 
-echo ""
-echo "✅ 理解正确，继续开发..."
-echo ""
+推荐返回：
+
+```json
+{
+  "status": "waiting_for_approval",
+  "stage": "java-coding",
+  "summary": "已完成业务逻辑理解，等待用户确认后继续开发",
+  "pending_decision": "confirm_business_understanding",
+  "verification": {
+    "tech_plan_loaded": "passed",
+    "requirement_confirmed": "pending",
+    "code_implemented": "not_run",
+    "quality_checks_passed": "not_run",
+    "state_saved": "pending"
+  },
+  "next_action": "approve_or_revise"
+}
+```
+
+若存在明确问题，则返回：
+
+```json
+{
+  "status": "need_clarification",
+  "stage": "java-coding",
+  "summary": "业务逻辑存在未澄清项，暂不进入编码",
+  "questions": [
+    "请确认当前模块是否允许复用现有事务逻辑。",
+    "请确认异常处理是否沿用现有错误码体系。"
+  ],
+  "verification": {
+    "tech_plan_loaded": "passed",
+    "requirement_confirmed": "failed",
+    "code_implemented": "not_run",
+    "quality_checks_passed": "not_run",
+    "state_saved": "pending"
+  },
+  "next_action": "clarify_business_rules"
+}
 ```
 
 ### 步骤 5：确定执行范围
@@ -868,8 +1080,10 @@ verify_parallel_results() {
 ### 步骤 6：标记阶段进行中
 
 ```bash
-node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "in_progress"
+node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "in_progress" null '{"substage":"implementing","next_action":"execute_coding"}'
 ```
+
+如果状态文件不存在或无法更新，必须返回 `execution_failed`，不得继续执行后续编码。
 
 ### 步骤 7：按阶段执行任务
 
@@ -1732,12 +1946,24 @@ fi
 ```bash
 # 记录完成进度
 node claude/utils/state-manager.js decision "$REQUIREMENT_NAME" "代码执行进度：已完成 {{X}}/{{N}} 个阶段"
+
+如中途因输入不足暂停，应同步更新：
+
+```bash
+node claude/utils/state-manager.js meta "$REQUIREMENT_NAME" '{"current_substage":"waiting_for_input","next_action":"clarify_requirement"}'
+```
+
+如进入等待确认状态，应同步更新：
+
+```bash
+node claude/utils/state-manager.js meta "$REQUIREMENT_NAME" '{"current_substage":"waiting_for_approval","next_action":"approve_coding"}'
+```
 ```
 
 ### 步骤 10：标记阶段完成
 
 ```bash
-node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "completed"
+node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "completed" null '{"substage":"completed","next_action":"unit-test","artifacts":{"tech_design_doc":"docs/'"$REQUIREMENT_NAME"'/技术设计.md","state_file":"docs/'"$REQUIREMENT_NAME"'/state.json","self_check_file":"docs/'"$REQUIREMENT_NAME"'/.self-check.json","impact_report":"docs/'"$REQUIREMENT_NAME"'/.impact-report.md"}}'
 ```
 
 ### 步骤 11：输出结果
@@ -1745,20 +1971,35 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
 ```json
 {
   "status": "completed",
-  "requirement_name": "{{需求名称}}",
-  "tech_design_doc": "docs/{{需求名称}}/技术设计.md",
-  "stages_completed": [
-    "数据库变更",
-    "Entity",
-    "Repository",
-    "Service层",
-    "Controller层",
-    "测试"
-  ],
-  "all_tests_passed": true,
-  "coverage": "85%",
-  "state_file": "docs/{{需求名称}}/state.json",
-  "next_stage": "code-review"
+  "stage": "java-coding",
+  "summary": "已完成代码实现并通过当前阶段质量校验",
+  "verification": {
+    "tech_plan_loaded": "passed",
+    "requirement_confirmed": "passed",
+    "code_implemented": "passed",
+    "quality_checks_passed": "passed",
+    "state_saved": "passed"
+  },
+  "artifacts": {
+    "tech_design_doc": "docs/{{需求名称}}/技术设计.md",
+    "state_file": "docs/{{需求名称}}/state.json",
+    "self_check_file": "docs/{{需求名称}}/.self-check.json",
+    "impact_report": "docs/{{需求名称}}/.impact-report.md"
+  },
+  "report": {
+    "requirement_name": "{{需求名称}}",
+    "stages_completed": [
+      "数据库变更",
+      "Entity",
+      "Repository",
+      "Service层",
+      "Controller层",
+      "测试"
+    ],
+    "all_tests_passed": true,
+    "coverage": "85%"
+  },
+  "next_action": "unit-test"
 }
 ```
 
@@ -1797,24 +2038,40 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
 ```json
 {
   "status": "completed",
-  "requirement_name": "{{需求名称}}",
-  "tech_design_doc": "docs/{{需求名称}}/技术设计.md",
-  "stages_completed": [
-    "数据库变更",
-    "Entity",
-    "Repository",
-    "Service层",
-    "Controller层",
-    "测试"
-  ],
-  "all_tests_passed": true,
-  "coverage": "{{X}}%",
-  "state_file": "docs/{{需求名称}}/state.json",
-  "next_stage_options": [
-    "运行代码自测 → Agent(agent-xe-unit-test)",
-    "代码评审 → Agent(code-reviewer)",
-    "提交代码 → git commit"
-  ]
+  "stage": "java-coding",
+  "summary": "Java 编码阶段已完成，可进入代码自测或评审阶段",
+  "verification": {
+    "tech_plan_loaded": "passed",
+    "requirement_confirmed": "passed",
+    "code_implemented": "passed",
+    "quality_checks_passed": "passed",
+    "state_saved": "passed"
+  },
+  "artifacts": {
+    "tech_design_doc": "docs/{{需求名称}}/技术设计.md",
+    "state_file": "docs/{{需求名称}}/state.json",
+    "self_check_file": "docs/{{需求名称}}/.self-check.json",
+    "impact_report": "docs/{{需求名称}}/.impact-report.md"
+  },
+  "report": {
+    "requirement_name": "{{需求名称}}",
+    "stages_completed": [
+      "数据库变更",
+      "Entity",
+      "Repository",
+      "Service层",
+      "Controller层",
+      "测试"
+    ],
+    "all_tests_passed": true,
+    "coverage": "{{X}}%",
+    "next_stage_options": [
+      "运行代码自测 → Agent(agent-xe-unit-test)",
+      "代码评审 → Agent(code-reviewer)",
+      "提交代码 → git commit"
+    ]
+  },
+  "next_action": "unit-test"
 }
 ```
 
@@ -1989,9 +2246,20 @@ throw new BusinessException("操作失败: " + e.getMessage(), e);
 
 ```json
 {
-  "status": "error",
-  "error": "tech-plan stage not completed",
-  "message": "请先完成 tech-plan 阶段"
+  "status": "need_clarification",
+  "stage": "java-coding",
+  "summary": "tech-plan 阶段尚未完成，暂不进入编码",
+  "questions": [
+    "请先完成 tech-plan 阶段，或提供已确认的技术设计文档路径。"
+  ],
+  "verification": {
+    "tech_plan_loaded": "failed",
+    "requirement_confirmed": "failed",
+    "code_implemented": "not_run",
+    "quality_checks_passed": "not_run",
+    "state_saved": "not_run"
+  },
+  "next_action": "complete_tech_plan"
 }
 ```
 
@@ -1999,10 +2267,21 @@ throw new BusinessException("操作失败: " + e.getMessage(), e);
 
 ```json
 {
-  "status": "error",
-  "error": "tech design document not found",
-  "message": "未找到技术设计文档",
-  "expected_path": "docs/{{需求名称}}/技术设计.md"
+  "status": "need_clarification",
+  "stage": "java-coding",
+  "summary": "未找到技术设计文档，无法开始编码",
+  "questions": [
+    "请确认技术设计文档是否已生成，或直接提供文档路径。"
+  ],
+  "verification": {
+    "tech_plan_loaded": "failed",
+    "requirement_confirmed": "failed",
+    "code_implemented": "not_run",
+    "quality_checks_passed": "not_run",
+    "state_saved": "not_run"
+  },
+  "expected_path": "docs/{{需求名称}}/技术设计.md",
+  "next_action": "provide_tech_plan"
 }
 ```
 
