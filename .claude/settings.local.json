@@ -129,7 +129,9 @@
       "Bash(printf '1\\\\n')",
       "Bash(bash \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/mysql-executor/run.sh\" --help)",
       "Bash(printf '2\\\\n')",
-      "Bash(bash \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/mysql-executor/run.sh\" \"SELECT 1 AS ok\")"
+      "Bash(bash \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/mysql-executor/run.sh\" \"SELECT 1 AS ok\")",
+      "Bash(python3:*)",
+      "Bash(node:*)"
     ]
   }
 }

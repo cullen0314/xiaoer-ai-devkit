@@ -47,6 +47,12 @@ class StateManager {
         'tdd-implementation': { status: 'pending' },
         'code-execution': { status: 'pending' }
       },
+      artifact_roles: {
+        design: 'tech_plan_doc',
+        task: 'dev_task_doc',
+        taskSource: 'task_source_doc',
+        state: 'state_file'
+      },
       decisions: []
     };
     this._write(state);
@@ -332,13 +338,15 @@ if (require.main === module) {
     console.log(`
 Usage:
   node state-manager.js init <requirementName> <prdUrl> [description]
-  node state-manager.js update <requirementName> <stageName> <status> [output]
+  node state-manager.js update <requirementName> <stageName> <status> [output] [metadataJson]
+  node state-manager.js meta <requirementName> <metadataJson>
   node state-manager.js decision <requirementName> <decision>
   node state-manager.js get <requirementName>
   node state-manager.js list
   node state-manager.js exists <requirementName>
 
 Stages: tech-plan, task-list, tdd-implementation, code-execution
+Artifact roles: design=tech_plan_doc, task=dev_task_doc, taskSource=task_source_doc, state=state_file
 Status: pending, in_progress, completed
     `);
   }

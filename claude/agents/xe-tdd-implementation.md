@@ -12,7 +12,7 @@ model: sonnet
 
 ## 核心职责
 
-1. 读取任务列表文档
+1. 优先读取开发任务文档，必要时回看技术设计文档
 2. 对每个任务执行 TDD 循环（RED→GREEN→REFACTOR）
 3. 确保测试覆盖率 80%+
 4. 更新 TODO 列表
@@ -34,21 +34,24 @@ node claude/utils/state-manager.js get "{requirementName}"
 
 ### 步骤 2：读取任务列表
 
-**优先级**：技术设计文档 > 独立任务列表文档
+**优先级**：开发任务文档 > 技术设计文档 > 旧版独立任务列表文档
 
 ```bash
-# 方式1：从技术设计文档读取（推荐）
-# 优先尝试读取技术设计文档中的"六、详细执行计划"章节
+# 方式1：优先读取开发任务文档（新流程推荐）
+Read(docs/{需求名称}/开发任务.md)
+
+# 方式2：读取技术设计文档（兼容旧流程）
 Read(docs/{需求名称}/技术设计.md)
 
-# 方式2：从独立任务列表文档读取（兼容旧流程）
-# 如果技术设计文档中没有执行计划章节，则读取独立文档
+# 方式3：读取旧版独立任务列表文档（兜底兼容）
 Read(docs/plans/YYYY-MM-DD-{feature-name}.md)
 ```
 
 **读取说明**：
-- 如果从技术设计文档读取，重点查看 **6.2 详细任务清单** 章节
-- 每个任务包含：文件结构、代码要点、验证命令、预期结果
+- 如果存在 `docs/{需求名称}/开发任务.md`，优先以该文档为执行输入
+- 如果没有开发任务文档，则直接读取 `docs/{需求名称}/技术设计.md` 中的“详细执行计划”章节
+- 如两者都不存在，再尝试读取旧版独立任务列表文档
+- 如通过技术设计文档回退执行，建议后续补跑 `task-list` 生成标准化开发任务文档
 
 ### 步骤 3：标记阶段进行中
 
@@ -245,11 +248,12 @@ node claude/utils/state-manager.js update "{requirementName}" "tdd-implementatio
 ```json
 {
   "requirementName": "用户登录",
-  "techDesignDoc": "docs/用户登录/技术设计.md"
+  "techDesignDoc": "docs/用户登录/技术设计.md",
+  "devTaskDoc": "docs/用户登录/开发任务.md"
 }
 ```
 
-> **说明**：优先使用 `techDesignDoc`（技术设计文档），如不存在则回退到独立的任务列表文档。
+> **说明**：优先使用 `devTaskDoc`（开发任务文档）；如不存在，则回退到 `techDesignDoc`，最后再兼容旧版独立任务列表文档。
 
 ## 错误处理
 
@@ -270,8 +274,9 @@ node claude/utils/state-manager.js update "{requirementName}" "tdd-implementatio
 {
   "status": "error",
   "error": "task document not found",
-  "message": "未找到技术设计文档或任务列表文档",
+  "message": "未找到开发任务文档、技术设计文档或旧版任务列表文档",
   "expected_paths": [
+    "docs/{需求名称}/开发任务.md",
     "docs/{需求名称}/技术设计.md",
     "docs/plans/YYYY-MM-DD-{feature-name}.md"
   ]
