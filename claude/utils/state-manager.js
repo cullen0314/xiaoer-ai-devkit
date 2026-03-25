@@ -94,7 +94,7 @@ class StateManager {
 
     // 更新当前阶段
     if (status === 'completed') {
-      const stageOrder = ['tech-plan', 'task-list', 'tdd-implementation', 'code-execution'];
+      const stageOrder = ['tech-plan', 'tdd-implementation', 'code-execution'];
       const currentIndex = stageOrder.indexOf(stageName);
       if (currentIndex < stageOrder.length - 1) {
         state.current_stage = stageOrder[currentIndex + 1];
@@ -345,7 +345,7 @@ Usage:
   node state-manager.js list
   node state-manager.js exists <requirementName>
 
-Stages: tech-plan, task-list, tdd-implementation, code-execution
+Stages: tech-plan, tdd-implementation, code-execution (兼容读取旧的 task-list 阶段)
 Artifact roles: design=tech_plan_doc, task=dev_task_doc, taskSource=task_source_doc, state=state_file
 Status: pending, in_progress, completed
     `);

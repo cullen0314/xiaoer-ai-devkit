@@ -1,8 +1,8 @@
-# Feature-Flow Skill Chain 设计
+# Feature-Flow 工作流设计
 
 ## 概述
 
-参考 superpowers 的链式调用设计，为新功能开发创建完整的 skill 链。
+记录 feature-flow 从历史 skill 链路收敛到 command/agent 主链路的设计说明。
 
 ## 链式调用流程
 
@@ -10,22 +10,18 @@
 用户输入：/xe:feature-flow "飞书PRD链接" "辅助说明"
         ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│  1. tech-plan skill                                          │
+│  1. agent-xe-tech-plan / xe:tech-plan                         │
 │     • 读取飞书文档                                            │
-│     • 需求澄清（逐个提问）                                    │
-│     • 提出 2-3 种方案                                         │
-│     • 分段展示设计，获取批准                                  │
+│     • 需求澄清（按需）                                        │
 │     • 生成技术设计文档                                        │
-│     • 末尾：调用 task-list skill                                 │
+│     • 直接生成开发任务文档                                     │
 └─────────────────────────────────────────────────────────────────┘
         ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│  2. task-list skill                                          │
-│     • 读取技术设计文档                                        │
-│     • 分解为可执行任务（2-5分钟/个）                           │
-│     • 每个任务包含：文件路径、代码、命令、验证                   │
-│     • 创建 TODO 列表                                            │
-│     • 末尾：调用 tdd-implementation skill                        │
+│  2. agent-xe-java-coding / xe-tdd-implementation              │
+│     • 读取开发任务文档或技术设计文档                            │
+│     • 执行实现 / TDD 开发                                      │
+│     • 更新状态与验证结果                                       │
 └─────────────────────────────────────────────────────────────────┘
         ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -71,8 +67,8 @@
 
 | Skill | 状态 | 说明 |
 |-------|------|------|
-| `tech-plan` | ✅ 已创建并更新 | 链的起点，末尾调用 task-list |
-| `task-list` | ✅ 已创建 | 分解任务，末尾调用 tdd-implementation |
+| `agent-xe-tech-plan` / `xe:tech-plan` | ✅ 当前主入口 | 链的起点，直接产出技术设计与开发任务文档 |
+| `agent-xe-java-coding` / `xe-tdd-implementation` | ✅ 当前主执行入口 | 消费开发任务文档并进入实现阶段 |
 | `tdd-implementation` | ✅ 已创建 | TDD 开发，末尾调用 code-execution |
 | `code-execution` | ✅ 已创建 | 执行实现，末尾调用 code-review |
 | `code-review` | ✅ ECC 已有 | 复用 ECC code-reviewer agent |
@@ -86,14 +82,14 @@
 
 ### 输出
 - 技术设计文档 (`docs/{需求名称}/技术设计.md`)
-- 任务列表文档 (`docs/plans/YYYY-MM-DD-{feature-name}.md`)
+- 开发任务文档 (`docs/{需求名称}/开发任务.md`)
 - 实现代码 + 测试
 - 验证报告
 
 ## 下一步
 
-✅ 所有 skills 已创建完成
-✅ `tech-plan` skill 已更新，末尾调用 `task-list`
+✅ 主工作流已收敛到 command / agent 主链路
+✅ `tech-plan` 阶段直接产出 `技术设计.md` 与 `开发任务.md`
 ✅ `feature-flow` command 已更新，展示完整流程
 
 **可选的后续工作：**
@@ -119,8 +115,8 @@
 
 | 检测条件 | 当前阶段 | 下一步 |
 |---------|---------|--------|
-| 技术设计存在 | Task-List | 调用 task-list skill |
-| 任务列表存在 | TDD-Implementation | 调用 tdd-implementation skill |
+| 技术设计存在 | Java-Coding / TDD-Implementation | 直接读取 `开发任务.md` 或 `技术设计.md` 继续实现 |
+| 开发任务文档存在 | TDD-Implementation | 调用 tdd-implementation skill |
 | 代码已实现，测试未全过 | Code-Execution | 调用 code-execution skill |
 | 测试通过，未 CR | Code-Review | 调用 code-review agent |
 | CR 通过，未验证 | Verification | 调用 verify agent |

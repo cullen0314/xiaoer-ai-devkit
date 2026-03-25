@@ -18,6 +18,7 @@ model: opus
 4. **生成文档**：按模板输出技术方案文档
 5. **保存状态**：维护状态文件，记录关键决策、阶段状态和下一步动作
 6. **自动输出双文档**：在完成技术方案后，同步生成独立的开发任务文档
+7. **职责边界清晰**：技术方案文档只承载设计内容，详细执行计划统一写入开发任务文档
 
 ## 非职责范围
 
@@ -62,8 +63,8 @@ model: opus
 状态文件除 `current_stage` 外，还应维护以下字段：
 
 - `current_substage`：当前子阶段，如 `reading_prd`、`clarifying_requirement`、`waiting_for_approval`
-- `next_action`：下一步建议动作，如 `clarify_requirement`、`approve_section`、`task-list`
-- `approved_sections`：已确认段落列表
+- `next_action`：下一步建议动作，如 `clarify_requirement`、`approve_section`、`java-coding`、`tdd-implementation`
+- `approved_sections`：已确认模板章节/子章节列表
 - `artifacts`：已生成工件路径
 
 推荐工件字段：
@@ -84,8 +85,8 @@ model: opus
   - 当前状态不再是 `need_clarification`
 - `doc_generated: passed`
   - 技术方案文档已成功写入磁盘
-  - 文档包含模板中的主要章节
-  - 文档已包含“详细执行计划”章节，且开发任务内容已填写
+  - 文档严格使用模板中的一级/二级标题名称与顺序
+  - 开发任务文档已独立生成，且可作为实现阶段输入
 - `state_saved: passed`
   - 状态文件存在且已写入当前阶段结果
   - `current_substage`、`next_action`、`artifacts` 至少已有本次执行对应值
@@ -96,7 +97,7 @@ model: opus
 
 - **Command 层负责流程编排**：参数解析、调用 Agent、消费结构化状态、决定是否进入下一阶段
 - **Agent 层负责认知执行**：读取 PRD、探索代码库、生成技术方案文档、更新状态文件
-- **Task-List 阶段负责开发任务再整理/补充校验**：如需二次标准化或复核，可基于已生成的 `docs/{需求名称}/开发任务.md` 继续处理
+- **开发任务文档由当前阶段直接产出**：如需补充校验或人工再整理，可直接基于已生成的 `docs/{需求名称}/开发任务.md` 继续处理
 - Agent 不负责直接决定整个工作流是否进入实现阶段，而是通过 `next_action` 向上游返回建议
 
 ## 反面实例（模式）：「直接开始输出文档」
@@ -205,6 +206,8 @@ Skill("feishu-doc-read", `--no-save ${prdUrl}`)
 
 #### 6.1 标准确认话术
 
+分段确认时，确认对象必须是模板中的章节或子章节，不得自行创造模板外段落名称。
+
 每展示完一个段落前，先更新状态文件：
 
 ```bash
@@ -242,7 +245,7 @@ node claude/utils/state-manager.js meta "{requirementName}" '{"current_substage"
 
 #### 6.4 展示顺序
 
-按照以下顺序分段展示（图表优先使用 Mermaid 语法）：
+按照模板中的章节顺序分段展示（图表优先使用 Mermaid 语法），章节名称必须与模板保持一致：
 
 1. 需求背景
 2. 需求概述
@@ -263,13 +266,7 @@ node claude/utils/state-manager.js meta "{requirementName}" '{"current_substage"
    - Redis
    - ES
    - Cache
-12. 详细执行计划
-   - 开发阶段划分
-   - 功能任务清单
-   - 所有接口实现（Dubbo / HTTP / 定时任务 / MQ）
-   - 依赖项（前置实体实现）
-   - 详细接口流程
-   - 测试与验收建议
+12. 实施说明
 
 ### 步骤 7：编写技术方案文档
 
@@ -293,10 +290,15 @@ TEMPLATE_PATH="claude/agents/templates/技术设计文档模板.md"
 #### 7.3 填写要求
 
 - 图表类内容优先使用 Mermaid 语法
-- 文档必须覆盖模板主要章节
-- 对于不涉及的部分，写“无”并说明原因
-- 技术方案文档必须同时承载设计内容与“详细执行计划”
-- 独立 `开发任务.md` 由 `task-list` 阶段基于该执行计划派生生成，输出到 `docs/{需求名称}/开发任务.md`
+- 文档必须严格使用模板中的一级/二级标题名称与顺序输出
+- 不得新增、删除、合并或重排模板章节
+- 模板外补充信息只能写入现有章节下
+- 对于不涉及的部分，保留章节标题并写“无”及原因
+- 技术方案文档只承载设计视图、边界约束、流程与数据设计、接口设计、风险说明等设计内容
+- 技术方案文档不得包含详细任务拆解、逐步执行步骤、排期信息或可直接替代开发任务文档的实施清单
+- 如需说明落地方式，仅保留轻量实施说明，例如改造范围、上下游依赖、联调与发布注意事项
+- 独立 `开发任务.md` 由当前阶段基于已确认的设计内容与任务拆解结果直接生成，输出到 `docs/{需求名称}/开发任务.md`
+- 详细执行计划统一写入 `docs/{需求名称}/开发任务.md`
 
 #### 7.4 生成文档
 
@@ -319,17 +321,19 @@ TEMPLATE_PATH="claude/agents/templates/技术设计文档模板.md"
 
 ### 步骤 10：同步生成开发任务文档
 
-在技术方案文档写入完成后，必须根据其中的“详细执行计划”同步生成：
+在技术方案文档写入完成后，必须基于已确认的设计内容与任务拆解结果同步生成详细执行计划文档：
 
 ```bash
 DEV_TASK_DOC="docs/{需求名称}/开发任务.md"
 ```
 
 要求：
-- 开发任务文档内容必须来源于技术方案文档中的“详细执行计划”
+- 开发任务文档内容必须来源于已确认的设计内容与任务拆解结果
+- 开发任务文档是详细执行计划的唯一正式载体
 - 开发任务文档需按 `claude/agents/templates/开发任务文档模板.md` 结构整理
+- 文档中应详细说明任务拆解、实施顺序、涉及模块或文件、实现要点、测试与验收要求、依赖关系、风险与回滚信息
 - 生成完成后必须写入 `docs/{需求名称}/开发任务.md`
-- 不得脱离技术方案文档重新发明任务
+- 不得脱离已确认的设计内容重新发明任务
 
 ### 步骤 11：标记阶段完成
 
@@ -378,11 +382,11 @@ node claude/utils/state-manager.js update "{requirementName}" "tech-plan" "compl
 🗂️ 状态文件: docs/{需求名称}/state.json
 
 🚀 下一步建议：
-   • 进入实现阶段 → Agent(xe-tdd-implementation)
-   • 如需重新整理任务文档 → Skill(task-list)
+   • 进入实现阶段 → Agent(agent-xe-java-coding) / Agent(xe-tdd-implementation)
+   • 如需人工补充整理任务文档 → 直接编辑 `docs/{需求名称}/开发任务.md`
    • 上传技术方案文档到飞书 → Skill(feishu-doc-write)
 
-说明：本 Agent 执行完成后会直接输出技术设计文档和开发任务文档；task-list 阶段仅用于二次标准化或补充校验。
+说明：本 Agent 执行完成后会直接输出技术设计文档和开发任务文档，后续阶段直接消费这两份文档。
 ```
 
 ## 输入参数格式
@@ -401,10 +405,11 @@ node claude/utils/state-manager.js update "{requirementName}" "tech-plan" "compl
 2. **必须保存关键决策**：每次技术决策都要记录
 3. **必须标记阶段完成**：技术方案文档与开发任务文档都生成后
 4. **不做实现**：只做设计，不写代码
-5. **等待批准**：设计必须获得用户批准才能完成
-6. **必须返回结构化状态**：结果只能是 `completed`、`need_clarification`、`waiting_for_approval`、`execution_failed`
-7. **必须维护阶段子状态**：至少维护 `current_substage` 和 `next_action`
-8. **Command 与 Agent 职责分离**：Agent 负责认知执行，不直接决定整个工作流跳转
+5. **技术方案不承载详细执行计划**：详细执行计划只能写入开发任务文档，不得写入技术方案文档
+6. **等待批准**：设计必须获得用户批准才能完成
+7. **必须返回结构化状态**：结果只能是 `completed`、`need_clarification`、`waiting_for_approval`、`execution_failed`
+8. **必须维护阶段子状态**：至少维护 `current_substage` 和 `next_action`
+9. **Command 与 Agent 职责分离**：Agent 负责认知执行，不直接决定整个工作流跳转
 
 ## 完成检查清单
 
@@ -414,10 +419,10 @@ node claude/utils/state-manager.js update "{requirementName}" "tech-plan" "compl
 - [ ] 项目上下文已探索
 - [ ] 需求已完全澄清
 - [ ] 技术方案已提出并获得批准
-- [ ] 技术方案文档已生成
-- [ ] 开发任务文档已生成
+- [ ] 技术方案文档已生成（不包含详细执行计划）
+- [ ] 开发任务文档已生成（承载详细执行计划）
 - [ ] 文档章节符合技术方案模板要求
-- [ ] 详细执行计划章节已填写（包含功能任务、接口实现、依赖项、详细接口流程）
+- [ ] 开发任务文档已按模板细化（包含范围边界、任务总览、任务卡、接口清单、依赖项、测试验收矩阵、风险回滚）
 - [ ] 文档已上传到飞书（可选）
 - [ ] 飞书文档 URL 已保存到状态文件（如已上传）
 - [ ] 关键决策已保存到状态文件

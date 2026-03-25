@@ -12,30 +12,33 @@ allowed-tools: [Bash, Read, Write, Edit, Glob, Grep, TaskCreate, TaskUpdate]
 
 ## 执行时机
 
-本技能在 `task-list` skill 完成后被调用，即任务列表文档已生成并获得用户批准后。
+本技能在 tech-plan 完成并产出开发任务文档后被调用，也可以通过 `/xe:resume` 在新会话中恢复执行。
 
 也可以通过 `/xe:resume` 命令在新建会话中恢复执行。
 
 ## 前置检查
 
-**执行前，必须确认以下文件存在：**
+**执行前，必须确认以下输入之一存在：**
 
 ```bash
-# 检查任务列表文档是否存在
-ls docs/plans/YYYY-MM-DD-{feature-name}.md
+# 优先检查开发任务文档
+ls docs/{需求名称}/开发任务.md
 
-# 如果不存在，提示用户：
-# "未找到任务列表文档，请先运行 task-list skill 或使用 /xe:resume"
+# 如不存在，再检查技术设计文档
+ls docs/{需求名称}/技术设计.md
+
+# 如两者都不存在，最后再兼容旧版任务列表文档
+ls docs/plans/YYYY-MM-DD-{feature-name}.md
 ```
 
 **如果存在：**
-- 读取任务列表文档
-- 定位到当前任务编号
-- 开始 TDD 开发
+- 优先读取 `docs/{需求名称}/开发任务.md`
+- 否则读取 `docs/{需求名称}/技术设计.md` 了解设计背景、接口与数据库约束
+- 最后再兼容旧版任务列表文档
 
 ## 输入
 
-- 任务列表文档路径（从 `task-list` 传递）
+- 开发任务文档路径，或技术设计文档路径
 - 当前任务编号（从 1 开始）
 
 ## TDD 循环
@@ -93,17 +96,19 @@ ls docs/plans/YYYY-MM-DD-{feature-name}.md
 ### 步骤 1：读取状态并验证
 
 ```bash
-# 读取状态文件，确认 task-list 已完成
+# 读取状态文件，确认 tech-plan 已完成
 node claude/utils/state-manager.js get "{需求名称}"
 
-# 检查 task-list 阶段是否为 completed
+# 检查 tech-plan 阶段是否为 completed，且已有开发任务文档或技术设计文档
 # 如果未完成或不存在，返回错误
 ```
 
 ### 步骤 2：读取任务列表
 
 ```bash
-# 读取 task-list 生成的任务列表文档
+# 优先读取开发任务文档，回退读取技术设计文档，最后兼容旧版任务列表文档
+Read(docs/{需求名称}/开发任务.md)
+Read(docs/{需求名称}/技术设计.md)
 Read(docs/plans/YYYY-MM-DD-{feature-name}.md)
 ```
 

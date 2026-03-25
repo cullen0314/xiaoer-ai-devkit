@@ -69,13 +69,16 @@ node claude/utils/state-manager.js get "{需求名称}"
 | current_stage | 下一步操作 | Agent 调用 | 说明 |
 |--------------|-----------|-----------|------|
 | `tech-plan` | 技术设计中 | Agent(agent-xe-tech-plan) | 继续设计 |
+| `task-list`（历史兼容） | 旧流程停留在任务整理阶段 | Agent(agent-xe-java-coding) / Agent(xe-tdd-implementation) | 直接读取已生成的 `开发任务.md` 或 `技术设计.md`，进入实现阶段 |
 | `tech-plan` ✅ | 双文档已完成，可直接进入实现 | Agent(agent-xe-java-coding) / Agent(xe-tdd-implementation) | `技术设计.md` 与 `开发任务.md` 已由 tech-plan 自动生成 |
 | `java-coding` | 代码实现中 | Agent(agent-xe-java-coding) | 继续开发 |
 | `java-coding` ✅ | 代码已完成，进入自测 | Agent(agent-xe-unit-test) | 执行单元测试 |
 | `unit-test` | 代码自测中 | Agent(agent-xe-unit-test) | 继续测试 |
 | `unit-test` ✅ | 所有开发完成 | Agent(everything-claude-code:code-reviewer) | 代码评审 |
 
-> **流程**：tech-plan → （可选 task-list）→ java-coding / tdd-implementation → unit-test / code-review
+> **流程**：tech-plan → java-coding / tdd-implementation → unit-test / code-review
+>
+> 兼容说明：旧状态如停留在 `task-list`，恢复时应直接读取已生成的 `开发任务.md` 或 `技术设计.md`，继续进入实现阶段。
 
 ### 状态文件不存在
 

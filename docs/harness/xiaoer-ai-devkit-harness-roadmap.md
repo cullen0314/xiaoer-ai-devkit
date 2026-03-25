@@ -116,8 +116,8 @@ Tech-Plan → Task-List → Java-Coding → Unit-Test
 
 - `claude/commands/xe/feature-flow.md`
 - `claude/commands/xe/feature-flow-resume.md`
-- `claude/skills/task-list/SKILL.md`
-- `docs/plans/` 相关模板
+- `docs/{需求名称}/开发任务.md` 相关模板
+- `docs/plans/` 历史工件兼容说明
 
 ### 完成标准
 
@@ -125,18 +125,18 @@ Tech-Plan → Task-List → Java-Coding → Unit-Test
 
 - 新需求进入 `feature-flow` 后会创建状态文件
 - `feature-flow-resume` 能从状态文件恢复
-- `tech-plan` 后必须产出 task-list
+- `tech-plan` 后必须产出 `开发任务.md`
 - `AGENTS.md` 能为新 Agent 提供导航入口
 
 ### 风险
 
 - 状态文件结构设计过于复杂，导致使用成本高
-- task-list 粒度过粗，无法发挥拆解效果
+- 开发任务文档粒度过粗时，无法发挥拆解效果
 
 ### 建议控制方式
 
 - 状态文件字段先少后多
-- task-list 先按 2-10 分钟粒度落地
+- 开发任务文档先按 2-10 分钟粒度落地
 
 ---
 
@@ -450,7 +450,7 @@ docs/harness/failure-patterns.md
 改造 `feature-flow` / `feature-flow-resume` 接入状态文件
 
 ### Step 4
-把 `task-list` 接入主流程，成为强制阶段
+把 `开发任务.md` 作为主流程统一执行工件
 
 ### Step 5
 实现 `verify-devkit` 第一版

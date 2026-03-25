@@ -92,8 +92,8 @@
 
 - `claude/skills/feishu-doc-read/`
 - `claude/skills/feishu-doc-write/`
-- `claude/skills/task-list/`
-- `claude/skills/tech-plan/`
+- `claude/skills/feishu-doc-read/`
+- `claude/skills/feishu-doc-write/`
 - `claude/skills/code-execution/`
 
 #### `claude/plugins/`
@@ -271,7 +271,7 @@ Tech-Plan → Task-List → Java-Coding → Unit-Test → Verify → Review
 
 1. 建立统一项目地图
 2. 建立状态文件机制
-3. 引入 task-list 作为强制中间层
+3. 收敛开发任务文档作为统一执行工件
 4. 建立统一验证入口
 5. 统一 Agent 输出协议
 
@@ -318,7 +318,7 @@ Tech-Plan → Task-List → Java-Coding → Unit-Test → Verify → Review
 
 1. `.claude/state/` 状态文件机制
 2. `feature-flow` 接入状态推进与恢复
-3. `task-list` 接入主工作流
+3. 统一 `开发任务.md` 作为主工作流执行输入
 4. `verify-devkit` 统一校验入口
 
 ---

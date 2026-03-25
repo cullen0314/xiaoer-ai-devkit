@@ -122,14 +122,14 @@ Tech-Plan → Java-Coding → Unit-Test → (可选)Code-Review
   "current_stage": "java-coding",
   "stages": {
     "tech-plan": "completed",
-    "task-list": "completed",
+    "task-list": "completed",  // 历史兼容字段
     "java-coding": "in_progress",
     "unit-test": "pending",
     "code-review": "pending"
   },
   "artifacts": {
     "tech_plan": "docs/plans/order-create-tech-plan.md",
-    "task_list": "docs/plans/order-create-task-list.md"
+    "task_list": "docs/订单创建接口/开发任务.md"
   },
   "verification": {
     "compile": "passed",
