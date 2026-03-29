@@ -1,0 +1,20 @@
+{
+  "name": "repo-readme-zh-guide",
+  "version": "1.0.0",
+  "description": "本地仓库 README 中文化与项目导读生成 Skill",
+  "main": "skill.js",
+  "scripts": {
+    "start": "node skill.js"
+  },
+  "keywords": [
+    "claude-code-skill",
+    "readme",
+    "markdown",
+    "translation",
+    "github",
+    "documentation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {}
+}

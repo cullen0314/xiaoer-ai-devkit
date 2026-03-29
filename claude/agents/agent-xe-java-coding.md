@@ -47,7 +47,7 @@ model: sonnet
 - `stage`：固定为 `java-coding`
 - `summary`：一句话总结当前结果
 - `verification`：记录关键动作是否完成
-- `artifacts`：产物路径，如技术设计文档、状态文件、自检文件、影响分析报告
+- `artifacts`：产物路径，如技术设计文档、开发任务文档、状态文件、自检文件
 - `next_action`：建议编排层下一步动作
 
 推荐输出外壳：
@@ -67,10 +67,9 @@ model: sonnet
   "artifacts": {
     "tech_design_doc": "docs/用户登录/技术设计.md",
     "state_file": "docs/用户登录/state.json",
-    "self_check_file": "docs/用户登录/.self-check.json",
-    "impact_report": "docs/用户登录/.impact-report.md"
+    "self_check_file": "docs/用户登录/.self-check.json"
   },
-  "next_action": "unit-test"
+  "next_action": "evaluator"
 }
 ```
 
@@ -148,7 +147,7 @@ model: sonnet
     "quality_checks_passed": "not_run",
     "state_saved": "pending"
   },
-  "next_action": "approve_or_revise"
+  "next_action": "approve_coding"
 }
 ```
 
@@ -192,12 +191,12 @@ model: sonnet
 #### 1.1 提取参数
 
 ```bash
-REQUIREMENT_NAME="{requirementName}"     # 需求名称（可选）
-USER_DESCRIPTION="{userDescription}"     # 用户描述（可选）
-DOC_PATH="{docPath}"                     # 技术设计文档路径（可选）
-TABLE_NAME="{tableName}"                 # 数据库表名（可选）
-STAGE="{stage}"                          # 执行阶段（可选）
-PARALLEL="{parallel}"                    # 并行模式：true/false（可选，默认自动判断）
+REQUIREMENT_NAME="{requirementName}"       # 需求名称（可选）
+USER_DESCRIPTION="{userDescription}"       # 用户描述（可选）
+DOC_PATH="{docPath}"                       # 技术设计文档路径（可选）
+TABLE_NAME="{tableName}"                   # 数据库表名（可选）
+EXECUTION_SCOPE="{executionScope}"         # 执行范围（可选）
+PARALLEL="{parallel}"                      # 并行模式：true/false（可选，默认自动判断）
 ```
 
 #### 1.2 自动发现技术方案文档
@@ -376,7 +375,7 @@ EOF
     "quality_checks_passed": "not_run",
     "state_saved": "pending"
   },
-  "next_action": "approve_or_cancel"
+  "next_action": "approve_coding"
 }
 ```
 
@@ -563,7 +562,7 @@ Entity：{{EntityName}}
     "quality_checks_passed": "not_run",
     "state_saved": "pending"
   },
-  "next_action": "approve_or_revise"
+  "next_action": "approve_coding"
 }
 ```
 
@@ -752,7 +751,7 @@ done
     "quality_checks_passed": "not_run",
     "state_saved": "pending"
   },
-  "next_action": "approve_or_revise"
+  "next_action": "approve_coding"
 }
 ```
 
@@ -774,19 +773,52 @@ done
     "quality_checks_passed": "not_run",
     "state_saved": "pending"
   },
-  "next_action": "clarify_business_rules"
+  "next_action": "clarify_requirement"
 }
 ```
 
+### 状态文件标准结构
+
+`java-coding` 阶段应维护稳定的状态文件结构，至少包含：
+
+```json
+{
+  "current_stage": "java-coding",
+  "current_substage": "initializing",
+  "next_action": "clarify_requirement",
+  "artifacts": {
+    "tech_design_doc": "",
+    "dev_task_doc": "",
+    "state_file": "",
+    "self_check_file": ""
+  }
+}
+```
+
+推荐 `current_substage` 词表：
+
+- `initializing`
+- `loading_context`
+- `waiting_for_approval`
+- `implementing`
+- `waiting_for_input`
+- `completed`
+
+前置门禁要求：
+
+- 若 `tech-plan` 未完成，默认返回 `need_clarification`
+- 若状态文件明确显示 `next_action` 不为 `java-coding`，且用户未明确授权跳过正常编排，默认返回 `need_clarification`
+- 若无法定位 `tech_design_doc` 或 `dev_task_doc`，不得进入实现阶段
+
 ### 步骤 5：确定执行范围
 
-根据 `stage` 参数确定执行范围：
+根据 `executionScope` 参数确定执行范围：
 
 ```bash
-# 解析 stage 参数
-STAGE="${stage:-all}"  # 默认为 all
+# 解析 executionScope 参数
+EXECUTION_SCOPE="${executionScope:-all}"  # 默认为 all
 
-case "$STAGE" in
+case "$EXECUTION_SCOPE" in
   all)
     EXEC_STAGES=("database" "entity" "repository" "service" "controller" "test")
     ;;
@@ -812,7 +844,7 @@ case "$STAGE" in
     EXEC_STAGES=("test")
     ;;
   *)
-    echo "错误：不支持的 stage 参数: $STAGE"
+    echo "错误：不支持的 executionScope 参数: $EXECUTION_SCOPE"
     echo "支持: all, database, entity, repository, entity-repository, service, controller, test"
     exit 1
     ;;
@@ -1547,401 +1579,30 @@ EOF
    4. 查看完整编译日志
 ```
 
-### 步骤 8.6：改动影响范围分析 ⭐ 核心
+### 步骤 8.6：独立评估交接
 
-**⚠️ 重要原则：代码开发完成后，必须分析本期改动的影响范围，识别潜在风险！**
+**⚠️ 重要原则：代码实现完成后的独立验收、影响范围分析、风险分级与最终交付判定由 `agent-xe-evaluator` 负责。**
 
-#### 8.6.1 影响范围分析流程
+当前 Agent 在本阶段只负责：
 
-```bash
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔍 开始分析本期改动影响范围..."
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+- 完成代码实现
+- 完成必要编译与测试自检
+- 记录 `.self-check.json`
+- 更新 `state.json`
+- 将下一步动作移交给 `agent-xe-evaluator`
 
-# 保存当前改动范围报告
-IMPACT_REPORT_FILE="docs/${REQUIREMENT_NAME}/.impact-report.md"
+不得在本 Agent 中承担以下职责：
 
-# 获取 git 改动文件（如果有 git 仓库）
-if [ -d ".git" ]; then
-  # 获取相对于起始提交的改动文件
-  if [ -n "$BASE_BRANCH" ]; then
-    CHANGED_FILES=$(git diff --name-only "$BASE_BRANCH" 2>/dev/null || git diff --name-only HEAD~5 2>/dev/null)
-  else
-    CHANGED_FILES=$(git diff --name-only HEAD~5 2>/dev/null || echo "")
-  fi
-else
-  # 没有 git，使用文件修改时间推断
-  START_TIME=$(date -d "2 hours ago" +%Y%m%d%H%M%S 2>/dev/null || date -v-2H +%Y%m%d%H%M%S)
-  CHANGED_FILES=$(find . -name "*.java" -type f -newermt "2 hours ago" 2>/dev/null | head -20)
-fi
+- 生成 `.impact-report.md`
+- 对本期改动做独立风险分级
+- 输出最终验收结论
+- 以“作者自检通过”替代独立验收通过
 
-# 统计改动文件
-TOTAL_CHANGED=$(echo "$CHANGED_FILES" | grep -c "^" || echo "0")
+实现阶段完成后，应在状态与输出中明确表达：
 
-echo "📊 改动统计: 共 $TOTAL_CHANGED 个文件发生变动"
-echo ""
+- 当前阶段完成的是 **实现与基础自检**
+- 下一步必须进入 **独立评估阶段**
 
-# 按类型分类改动文件
-NEW_FILES=$(echo "$CHANGED_FILES" | grep -E "^src/main/java.*\.java$" | wc -l | xargs)
-TEST_FILES=$(echo "$CHANGED_FILES" | grep -E "^src/test/java.*\.java$" | wc -l | xargs)
-CONFIG_FILES=$(echo "$CHANGED_FILES" | grep -E "\.(xml|properties|yml|yaml)" | wc -l | xargs)
-SQL_FILES=$(echo "$CHANGED_FILES" | grep -E "\.sql$" | wc -l | xargs)
-
-echo "📋 改动分类:"
-echo "   • 新增/修改 Java 文件: $NEW_FILES"
-echo "   • 测试文件: $TEST_FILES"
-echo "   • 配置文件: $CONFIG_FILES"
-echo "   • SQL 迁移文件: $SQL_FILES"
-echo ""
-
-# 按模块分类
-echo "📦 按模块分类:"
-MODULES=$(echo "$CHANGED_FILES" | grep -oP '(?<=src/main/java/)[^/]+' | sort -u)
-for module in $MODULES; do
-  count=$(echo "$CHANGED_FILES" | grep -c "/$module/" || echo "0")
-  echo "   • $module: $count 个文件"
-done
-echo ""
-
-# 分析影响范围
-echo "🎯 影响范围分析:"
-echo ""
-
-# 1. 数据库变更影响
-if [ "$SQL_FILES" -gt 0 ]; then
-  echo "   ⚠️  数据库变更:"
-  echo "      • 检测到 $SQL_FILES 个 SQL 迁移文件"
-  echo "      • 影响: 表结构变更、数据迁移、兼容性风险"
-  echo "      • 建议: 确认迁移脚本正确性、准备回滚方案"
-  echo ""
-fi
-
-# 2. Controller 层变更影响
-CONTROLLER_CHANGES=$(echo "$CHANGED_FILES" | grep -i "controller" | wc -l | xargs)
-if [ "$CONTROLLER_CHANGES" -gt 0 ]; then
-  echo "   ⚠️  API 接口变更:"
-  echo "      • 检测到 $CONTROLLER_CHANGES 个 Controller 文件变更"
-  echo "      • 影响: API 接口行为变化、客户端兼容性"
-  echo "      • 建议: 检查接口变更、更新 API 文档、通知下游"
-  echo ""
-fi
-
-# 3. Service 层变更影响
-SERVICE_CHANGES=$(echo "$CHANGED_FILES" | grep -i "service" | grep -v "test" | wc -l | xargs)
-if [ "$SERVICE_CHANGES" -gt 0 ]; then
-  echo "   ⚠️  业务逻辑变更:"
-  echo "      • 检测到 $SERVICE_CHANGES 个 Service 文件变更"
-  echo "      • 影响: 业务流程变化、事务边界变更"
-  echo "      • 建议: 审查业务逻辑、确认事务一致性、补充测试"
-  echo ""
-fi
-
-# 4. Entity 层变更影响
-ENTITY_CHANGES=$(echo "$CHANGED_FILES" | grep -iE "entity|model|domain" | wc -l | xargs)
-if [ "$ENTITY_CHANGES" -gt 0 ]; then
-  echo "   ⚠️  数据模型变更:"
-  echo "      • 检测到 $ENTITY_CHANGES 个 Entity 文件变更"
-  echo "      • 影响: 数据结构变化、序列化兼容性"
-  echo "      • 建议: 检查字段映射、确认序列化兼容、通知相关方"
-  echo ""
-fi
-
-# 5. 配置变更影响
-if [ "$CONFIG_FILES" -gt 0 ]; then
-  echo "   ⚠️  配置变更:"
-  echo "      • 检测到 $CONFIG_FILES 个配置文件变更"
-  echo "      • 影响: 应用行为变化、环境差异"
-  echo "      • 建议: 确认配置正确性、检查环境一致性"
-  echo ""
-fi
-
-# 6. 公共组件变更
-COMMON_CHANGES=$(echo "$CHANGED_FILES" | grep -iE "util|helper|common|shared|component" | wc -l | xargs)
-if [ "$COMMON_CHANGES" -gt 0 ]; then
-  echo "   ⚠️  公共组件变更:"
-  echo "      • 检测到 $COMMON_CHANGES 个公共组件文件变更"
-  echo "      • 影响: 可能影响多个模块、风险较高"
-  echo "      • 建议: 全量回归测试、通知所有相关开发"
-  echo ""
-fi
-
-# 生成改动文件列表
-echo ""
-echo "📄 改动文件列表:"
-echo "$CHANGED_FILES" | nl -w2 -s'. '
-echo ""
-
-# 检测潜在风险
-echo "🚨 潜在风险检测:"
-RISK_DETECTED=false
-
-# 风险1：大范围改动
-if [ "$TOTAL_CHANGED" -gt 20 ]; then
-  echo "   ⚠️  改动范围较大 ($TOTAL_CHANGED 个文件)"
-  echo "      → 建议: 增加测试覆盖率、考虑分批上线"
-  RISK_DETECTED=true
-fi
-
-# 风险2：跨模块改动
-MODULE_COUNT=$(echo "$MODULES" | wc -l | xargs)
-if [ "$MODULE_COUNT" -gt 3 ]; then
-  echo "   ⚠️  跨模块改动 (影响 $MODULE_COUNT 个模块)"
-  echo "      → 建议: 模块间集成测试、确认兼容性"
-  RISK_DETECTED=true
-fi
-
-# 风险3：缺少测试
-if [ "$NEW_FILES" -gt 0 ] && [ "$TEST_FILES" -eq 0 ]; then
-  echo "   ⚠️  新增代码但缺少测试文件"
-  echo "      → 建议: 补充单元测试、确保覆盖率"
-  RISK_DETECTED=true
-fi
-
-# 风险4：数据库变更缺少迁移
-if [ "$ENTITY_CHANGES" -gt 0 ] && [ "$SQL_FILES" -eq 0 ]; then
-  echo "   ⚠️  Entity 变更但缺少 SQL 迁移文件"
-  echo "      → 建议: 检查是否需要添加迁移脚本"
-  RISK_DETECTED=true
-fi
-
-if [ "$RISK_DETECTED" = false ]; then
-  echo "   ✅ 未检测到明显风险"
-fi
-
-# 生成影响范围报告
-cat > "$IMPACT_REPORT_FILE" << EOF
-# 本期改动影响范围报告
-
-**需求名称**: $REQUIREMENT_NAME
-**分析时间**: $(date '+%Y-%m-%d %H:%M:%S')
-**分析分支**: ${BASE_BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "未知")}
-
----
-
-## 📊 改动统计
-
-| 类型 | 数量 |
-|------|------|
-| Java 文件 | $NEW_FILES |
-| 测试文件 | $TEST_FILES |
-| 配置文件 | $CONFIG_FILES |
-| SQL 文件 | $SQL_FILES |
-| **总计** | **$TOTAL_CHANGED** |
-
-## 📦 按模块分类
-
-\`\`\`
-$(for module in $MODULES; do
-  count=$(echo "$CHANGED_FILES" | grep -c "/$module/" || echo "0")
-  echo "$module: $count 个文件"
-done)
-\`\`\`
-
-## 📄 改动文件列表
-
-\`\`\`
-$(echo "$CHANGED_FILES" | nl -w2 -s'. ')
-\`\`\`
-
-## 🎯 影响范围
-
-EOF
-
-# 添加详细影响分析到报告
-if [ "$SQL_FILES" -gt 0 ]; then
-  cat >> "$IMPACT_REPORT_FILE" << 'EOF'
-### ⚠️ 数据库变更
-- **影响**: 表结构变更、数据迁移、兼容性风险
-- **建议**: 确认迁移脚本正确性、准备回滚方案
-
-EOF
-fi
-
-if [ "$CONTROLLER_CHANGES" -gt 0 ]; then
-  cat >> "$IMPACT_REPORT_FILE" << 'EOF'
-### ⚠️ API 接口变更
-- **影响**: API 接口行为变化、客户端兼容性
-- **建议**: 检查接口变更、更新 API 文档、通知下游
-
-EOF
-fi
-
-if [ "$SERVICE_CHANGES" -gt 0 ]; then
-  cat >> "$IMPACT_REPORT_FILE" << 'EOF'
-### ⚠️ 业务逻辑变更
-- **影响**: 业务流程变化、事务边界变更
-- **建议**: 审查业务逻辑、确认事务一致性、补充测试
-
-EOF
-fi
-
-if [ "$ENTITY_CHANGES" -gt 0 ]; then
-  cat >> "$IMPACT_REPORT_FILE" << 'EOF'
-### ⚠️ 数据模型变更
-- **影响**: 数据结构变化、序列化兼容性
-- **建议**: 检查字段映射、确认序列化兼容、通知相关方
-
-EOF
-fi
-
-if [ "$COMMON_CHANGES" -gt 0 ]; then
-  cat >> "$IMPACT_REPORT_FILE" << 'EOF'
-### ⚠️ 公共组件变更
-- **影响**: 可能影响多个模块、风险较高
-- **建议**: 全量回归测试、通知所有相关开发
-
-EOF
-fi
-
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ 影响范围分析完成"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "📄 详细报告已保存: $IMPACT_REPORT_FILE"
-echo ""
-
-# 询问是否需要查看报告
-echo "💡 提示: 使用以下命令查看完整报告:"
-echo "   cat $IMPACT_REPORT_FILE"
-echo ""
-```
-
-#### 8.6.2 影响等级判断
-
-```bash
-# 根据改动范围判断影响等级
-calculate_impact_level() {
-  local score=0
-
-  # 文件数量评分
-  if [ "$TOTAL_CHANGED" -gt 50 ]; then
-    score=$((score + 5))
-  elif [ "$TOTAL_CHANGED" -gt 20 ]; then
-    score=$((score + 3))
-  elif [ "$TOTAL_CHANGED" -gt 10 ]; then
-    score=$((score + 1))
-  fi
-
-  # 模块数量评分
-  if [ "$MODULE_COUNT" -gt 5 ]; then
-    score=$((score + 5))
-  elif [ "$MODULE_COUNT" -gt 3 ]; then
-    score=$((score + 3))
-  elif [ "$MODULE_COUNT" -gt 1 ]; then
-    score=$((score + 1))
-  fi
-
-  # 数据库变更评分
-  if [ "$SQL_FILES" -gt 0 ]; then
-    score=$((score + 3))
-  fi
-
-  # 公共组件变更评分
-  if [ "$COMMON_CHANGES" -gt 0 ]; then
-    score=$((score + 3))
-  fi
-
-  # 缺少测试扣分
-  if [ "$NEW_FILES" -gt 0 ] && [ "$TEST_FILES" -eq 0 ]; then
-    score=$((score + 2))
-  fi
-
-  # 判断等级
-  if [ $score -ge 10 ]; then
-    echo "🔴 高风险"
-  elif [ $score -ge 5 ]; then
-    echo "🟡 中风险"
-  else
-    echo "🟢 低风险"
-  fi
-}
-
-IMPACT_LEVEL=$(calculate_impact_level)
-echo "🎯 本次改动影响等级: $IMPACT_LEVEL"
-```
-
-#### 8.6.3 影响范围输出格式
-
-**低风险输出：**
-```markdown
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🟢 低风险改动
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📊 改动统计: 共 5 个文件
-📦 影响模块: 1 个 (user)
-🎯 影响范围: 单模块内部改动
-
-✅ 建议: 常规测试即可上线
-```
-
-**高风险输出：**
-```markdown
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔴 高风险改动
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📊 改动统计: 共 35 个文件
-📦 影响模块: 5 个 (user, order, payment, common, notification)
-
-⚠️  高风险点:
-   • 跨模块改动 (5个模块)
-   • 公共组件变更 (3个文件)
-   • 缺少测试文件
-
-🚨 建议:
-   1. 进行全量回归测试
-   2. 通知所有相关开发人员
-   3. 准备详细回滚方案
-   4. 建议分批上线
-```
-
-#### 8.6.4 风险检查清单
-
-```bash
-# 风险检查清单
-RISK_CHECKLIST=(
-  "数据库变更:SQL_FILES:0"
-  "API接口变更:CONTROLLER_CHANGES:0"
-  "业务逻辑变更:SERVICE_CHANGES:0"
-  "数据模型变更:ENTITY_CHANGES:0"
-  "公共组件变更:COMMON_CHANGES:0"
-  "缺少测试覆盖:HAS_TESTS:1"
-  "跨模块改动:CROSS_MODULE:1"
-)
-
-echo ""
-echo "📋 风险检查清单:"
-echo ""
-
-for item in "${RISK_CHECKLIST[@]}"; do
-  IFS=':' read -r name var invert <<< "$item"
-  # 检查逻辑...
-done
-```
-
-#### 8.6.5 与下一步衔接
-
-```bash
-# 根据影响等级决定后续流程
-if [[ "$IMPACT_LEVEL" == *"高风险"* ]]; then
-  echo ""
-  echo "🔔 检测到高风险改动，建议执行以下操作:"
-  echo "   1. 运行完整测试套件"
-  echo "   2. 进行代码评审"
-  echo "   3. 准备回滚方案"
-  echo ""
-  echo "是否需要我帮你执行这些操作？[y/N]"
-  read -r -t 30 -p "你的选择: " RUN_EXTRA_CHECKS
-  if [[ "$RUN_EXTRA_CHECKS" =~ ^[yY]$ ]]; then
-    # 执行额外检查
-    run_comprehensive_tests
-  fi
-fi
-```
 
 ### 步骤 9：更新进度
 
@@ -1965,7 +1626,7 @@ node claude/utils/state-manager.js meta "$REQUIREMENT_NAME" '{"current_substage"
 ### 步骤 10：标记阶段完成
 
 ```bash
-node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "completed" null '{"substage":"completed","next_action":"unit-test","artifacts":{"tech_design_doc":"docs/'"$REQUIREMENT_NAME"'/技术设计.md","state_file":"docs/'"$REQUIREMENT_NAME"'/state.json","self_check_file":"docs/'"$REQUIREMENT_NAME"'/.self-check.json","impact_report":"docs/'"$REQUIREMENT_NAME"'/.impact-report.md"}}'
+node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "completed" null '{"substage":"completed","next_action":"evaluator","artifacts":{"tech_design_doc":"docs/'"$REQUIREMENT_NAME"'/技术设计.md","dev_task_doc":"docs/'"$REQUIREMENT_NAME"'/开发任务.md","state_file":"docs/'"$REQUIREMENT_NAME"'/state.json","self_check_file":"docs/'"$REQUIREMENT_NAME"'/.self-check.json"}}'
 ```
 
 ### 步骤 11：输出结果
@@ -1974,7 +1635,7 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
 {
   "status": "completed",
   "stage": "java-coding",
-  "summary": "已完成代码实现并通过当前阶段质量校验",
+  "summary": "已完成代码实现与基础自检，待进入独立评估阶段",
   "verification": {
     "tech_plan_loaded": "passed",
     "requirement_confirmed": "passed",
@@ -1984,9 +1645,9 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
   },
   "artifacts": {
     "tech_design_doc": "docs/{{需求名称}}/技术设计.md",
+    "dev_task_doc": "docs/{{需求名称}}/开发任务.md",
     "state_file": "docs/{{需求名称}}/state.json",
-    "self_check_file": "docs/{{需求名称}}/.self-check.json",
-    "impact_report": "docs/{{需求名称}}/.impact-report.md"
+    "self_check_file": "docs/{{需求名称}}/.self-check.json"
   },
   "report": {
     "requirement_name": "{{需求名称}}",
@@ -1999,9 +1660,10 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
       "测试"
     ],
     "all_tests_passed": true,
-    "coverage": "85%"
+    "coverage": "85%",
+    "note": "当前结论仅代表实现与基础自检完成，不代表独立验收已通过"
   },
-  "next_action": "unit-test"
+  "next_action": "evaluator"
 }
 ```
 
@@ -2021,18 +1683,21 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
   • Controller层
   • 测试
 
-📊 测试结果：
-  所有测试通过：✅
+📊 基础自检结果：
+  编译/测试通过：✅
   覆盖率：{{X}}%
+
+⚠️ 说明：
+  当前阶段仅代表“实现 + 基础自检”完成
+  尚未完成独立评估与最终验收
 
 💡 新会话恢复方法：
    方式1：使用 /xe:feature-flow-resume "{{需求名称}}"
    方式2：读取技术设计文档中的背景、接口、实体与数据库设计，作为实现约束参考
 
 🚀 下一步选择：
-   • 运行代码自测 → Agent(agent-xe-unit-test)
-   • 代码评审 → Agent(code-reviewer)
-   • 提交代码 → git commit
+   • 进入独立评估 → Agent(agent-xe-evaluator)
+   • 评估通过后再考虑提交代码 → git commit
 ```
 
 **输出 JSON 格式：**
@@ -2041,7 +1706,7 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
 {
   "status": "completed",
   "stage": "java-coding",
-  "summary": "Java 编码阶段已完成，可进入代码自测或评审阶段",
+  "summary": "Java 编码阶段已完成，待进入独立评估阶段",
   "verification": {
     "tech_plan_loaded": "passed",
     "requirement_confirmed": "passed",
@@ -2051,9 +1716,9 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
   },
   "artifacts": {
     "tech_design_doc": "docs/{{需求名称}}/技术设计.md",
+    "dev_task_doc": "docs/{{需求名称}}/开发任务.md",
     "state_file": "docs/{{需求名称}}/state.json",
-    "self_check_file": "docs/{{需求名称}}/.self-check.json",
-    "impact_report": "docs/{{需求名称}}/.impact-report.md"
+    "self_check_file": "docs/{{需求名称}}/.self-check.json"
   },
   "report": {
     "requirement_name": "{{需求名称}}",
@@ -2068,12 +1733,12 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
     "all_tests_passed": true,
     "coverage": "{{X}}%",
     "next_stage_options": [
-      "运行代码自测 → Agent(agent-xe-unit-test)",
-      "代码评审 → Agent(code-reviewer)",
-      "提交代码 → git commit"
-    ]
+      "进入独立评估 → Agent(agent-xe-evaluator)",
+      "评估通过后再提交代码 → git commit"
+    ],
+    "note": "当前输出仅说明实现阶段完成，不代表最终验收通过"
   },
-  "next_action": "unit-test"
+  "next_action": "evaluator"
 }
 ```
 
@@ -2087,7 +1752,7 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
   "userDescription": "实现用户登录功能，支持手机号和邮箱登录",
   "docPath": "docs/用户登录/技术设计.md",
   "tableName": "user",
-  "stage": "all",
+  "executionScope": "all",
   "parallel": "auto"
 }
 ```
@@ -2108,7 +1773,7 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
 | `userDescription` | string | ❌ | 用户对需求的描述，补充技术设计文档的不足 |
 | `docPath` | string | ❌ | 技术设计文档路径，默认为 `docs/{{需求名称}}/技术设计.md` |
 | `tableName` | string | ❌ | 数据库表名，用于直接查询表结构 |
-| `stage` | string | ❌ | 执行阶段：`all`(默认) / `database` / `entity` / `repository` / `entity-repository` / `service` / `controller` / `test` |
+| `executionScope` | string | ❌ | 执行范围：`all`(默认) / `database` / `entity` / `repository` / `entity-repository` / `service` / `controller` / `test` |
 | `parallel` | string | ❌ | 并行模式：`auto`(默认，自动判断) / `true`(强制并行) / `false`(强制顺序) |
 
 ### 使用示例
@@ -2140,7 +1805,7 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
 ```json
 {
   "requirementName": "用户登录",
-  "stage": "database"
+  "executionScope": "database"
 }
 ```
 
@@ -2175,9 +1840,9 @@ node claude/utils/state-manager.js update "$REQUIREMENT_NAME" "java-coding" "com
 | **独立判断并行** | 分析功能点独立性，决定是否采用并行开发模式 |
 | **并行加速** | 独立功能点使用子 agent 并行开发，节省时间 |
 | **自检循环机制** ⭐ | 代码完成后执行自检，编译失败则自动修复并重试，最多 5 次 |
-| **影响范围分析** ⭐ | 分析本期改动的文件、模块、风险等级 |
-| **风险预警** | 根据影响等级给出测试和上线建议 |
-| **质量底线** | 只有编译和测试全部通过才能标记完成 |
+| **基础自检** ⭐ | 代码完成后执行编译与测试自检，编译失败则自动修复并重试，最多 5 次 |
+| **质量底线** | 只有实现完成且必要自检通过，才能标记当前阶段完成 |
+| **独立验收后置** | 独立评估、风险分级与验收结论由 `agent-xe-evaluator` 负责 |
 
 ## 代码规范
 
@@ -2313,9 +1978,7 @@ fi
 - [ ] **自检循环已执行并通过** ⭐
 - [ ] 编译检查通过（最多重试 5 次）
 - [ ] 测试检查通过
-- [ ] **改动影响范围已分析** ⭐
-- [ ] 影响范围报告已保存到 `.impact-report.md`
-- [ ] 风险等级已评估
 - [ ] 质量检查清单已执行
 - [ ] 自检状态已记录到 `.self-check.json`
+- [ ] 已将下一步动作移交给 `agent-xe-evaluator`
 - [ ] java-coding 阶段已标记为完成

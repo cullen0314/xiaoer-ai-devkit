@@ -43,9 +43,8 @@ class StateManager {
       artifacts: {},
       stages: {
         'tech-plan': { status: 'in_progress' },
-        'task-list': { status: 'pending' },
-        'tdd-implementation': { status: 'pending' },
-        'code-execution': { status: 'pending' }
+        'java-coding': { status: 'pending' },
+        'evaluator': { status: 'pending' }
       },
       artifact_roles: {
         design: 'tech_plan_doc',
@@ -94,10 +93,12 @@ class StateManager {
 
     // 更新当前阶段
     if (status === 'completed') {
-      const stageOrder = ['tech-plan', 'tdd-implementation', 'code-execution'];
+      const stageOrder = ['tech-plan', 'java-coding', 'evaluator'];
       const currentIndex = stageOrder.indexOf(stageName);
-      if (currentIndex < stageOrder.length - 1) {
+      if (currentIndex >= 0 && currentIndex < stageOrder.length - 1) {
         state.current_stage = stageOrder[currentIndex + 1];
+      } else if (currentIndex >= 0) {
+        state.current_stage = stageName;
       }
     } else if (status === 'in_progress') {
       state.current_stage = stageName;
@@ -345,7 +346,7 @@ Usage:
   node state-manager.js list
   node state-manager.js exists <requirementName>
 
-Stages: tech-plan, tdd-implementation, code-execution (兼容读取旧的 task-list 阶段)
+Stages: tech-plan, java-coding, evaluator (兼容读取旧的 task-list、tdd-implementation、code-execution、unit-test 阶段)
 Artifact roles: design=tech_plan_doc, task=dev_task_doc, taskSource=task_source_doc, state=state_file
 Status: pending, in_progress, completed
     `);

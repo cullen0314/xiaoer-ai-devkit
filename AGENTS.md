@@ -57,7 +57,6 @@
 
 - `claude/commands/xe/feature-flow.md`
 - `claude/commands/xe/feature-flow-resume.md`
-- `claude/commands/xe/tech-plan.md`
 - `claude/commands/xe/curl-debug.md`
 - `claude/commands/xe/new-branch.md`
 
@@ -196,13 +195,14 @@ Tech-Plan → Task-List → Java-Coding → Unit-Test → Verify → Review
 
 入口：
 
-- `/xe:tech-plan`
 - `agent-xe-tech-plan`
+- `/xe:feature-flow`
 
 适用场景：
 
 - 从需求文档生成技术设计
 - 沉淀设计工件到文档
+- 作为 feature-flow 的第一阶段进入完整开发链路
 
 ### 3. 明确任务执行工作流
 

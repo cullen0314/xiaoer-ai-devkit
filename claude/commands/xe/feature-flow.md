@@ -1,6 +1,6 @@
 ---
 name: feature-flow
-description: 新功能开发工作流 - 技术设计→代码实现→单元测试的完整流程
+description: 新功能开发工作流 - 技术设计→代码实现→独立评估的完整流程
 argument-hint: "飞书PRD链接 [辅助说明]"
 disable-model-invocation: true
 ---
@@ -10,9 +10,9 @@ disable-model-invocation: true
 ## 流程概览
 
 ```
-Tech-Plan → Java-Coding → Unit-Test → (可选)Code-Review
-   ↓            ↓              ↓
-技术设计    代码实现       代码自测
+Tech-Plan → Java-Coding → Evaluator
+   ↓            ↓             ↓
+技术设计    代码实现      独立验收
 ```
 
 ## 执行流程
@@ -35,20 +35,11 @@ Agent(
 )
 ```
 
-### 阶段 3：Unit-Test
+### 阶段 3：Evaluator
 
 ```bash
 Agent(
-  subagent_type="agent-xe-unit-test",
-  prompt="需求名称：{需求名称}"
-)
-```
-
-### 可选：Code-Review
-
-```bash
-Agent(
-  subagent_type="everything-claude-code:code-reviewer",
+  subagent_type="agent-xe-evaluator",
   prompt="需求名称：{需求名称}"
 )
 ```
@@ -58,7 +49,7 @@ Agent(
 | 项目 | 说明 |
 |------|------|
 | 输入 | PRD链接 + 辅助说明（可选） |
-| 输出 | 技术设计文档 + 源代码 + 测试代码 + 测试报告 |
+| 输出 | 技术设计文档 + 开发任务文档 + 源代码 + 基础自检产物 + 独立评估报告 |
 
 ## 断点续传
 
@@ -69,5 +60,5 @@ Agent(
 | 当前阶段 | 恢复后操作 |
 |----------|-----------|
 | tech-plan completed | → agent-xe-java-coding |
-| java-coding completed | → agent-xe-unit-test |
-| unit-test completed | → 代码评审或提交 |
+| java-coding completed | → agent-xe-evaluator |
+| evaluator completed | → 根据 `next_action` 进入人工复核/提交或修复回流 |

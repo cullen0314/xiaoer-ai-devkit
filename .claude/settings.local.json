@@ -135,7 +135,21 @@
       "Bash(printf '\\\\n---\\\\n')",
       "Bash(chmod +x \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/video-prompt-generator/run.sh\")",
       "Bash(bash \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/video-prompt-generator/run.sh\" \"帮我生成一个15秒咖啡广告视频prompt，风格高级，适合小红书\")",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(chmod:*)",
+      "Bash(brew:*)",
+      "Skill(update-config)",
+      "Bash(zsh -lc 'printf \"📁 %s | 🌿 %s | 🔑 %s | 🎯 Opus 4.6\\\\n\" \"$\\(basename \"$PWD\"\\)\" \"$\\(git branch --show-current 2>/dev/null || echo no-git\\)\" \"$\\(if [ -n \"$ANTHROPIC_AUTH_TOKEN\" ]; then printf \"%s***%s\" \"${ANTHROPIC_AUTH_TOKEN:0:4}\" \"${ANTHROPIC_AUTH_TOKEN: -4}\"; else echo no-token; fi\\)\"')",
+      "Bash(mdls -name kMDItemVersion \"/Applications/iTerm.app\")",
+      "Bash(mdls -name kMDItemVersion \"/Applications/iTerm2.app\")",
+      "Bash(open:*)",
+      "Bash(bash \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/web-doc-zh/run.sh\" --preview \"https://react.dev/reference/react/useEffect\")",
+      "Bash(bash \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/web-doc-zh/run.sh\" --generate --source-only --output \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/docs/tmp-web-doc-source.md\" --force \"https://react.dev/reference/react/useEffect\")",
+      "Bash(bash \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/web-doc-zh/run.sh\" --generate --output \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/docs/react-useeffect.zh-CN.md\" --force \"https://react.dev/reference/react/useEffect\")",
+      "Bash(bash \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/web-doc-zh/run.sh\" --preview \"https://developer.harness.io/docs/?_gl=1*177b1m6*_ga_46758J5H8P*czE3NzQ3NTY2NzEkbzEkZzEkdDE3NzQ3NTY2ODEkajUwJGwwJGgw\")",
+      "Bash(bash \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/web-doc-zh/run.sh\" --preview \"https://developer.harness.io/docs/platform/knowledgebase/custom-implementations/ansible\")",
+      "Skill(feishu-doc-read)",
+      "Bash(REQ=\"__feature_flow_plan_test__\")"
     ]
   }
 }

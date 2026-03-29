@@ -1,0 +1,26 @@
+{
+  "name": "web-doc-zh",
+  "version": "1.0.0",
+  "description": "网页技术文档抓取与中文翻译 Skill",
+  "main": "skill.js",
+  "scripts": {
+    "start": "node skill.js"
+  },
+  "keywords": [
+    "claude-code-skill",
+    "documentation",
+    "markdown",
+    "translation",
+    "web",
+    "readability"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@mozilla/readability": "^0.5.0",
+    "axios": "^1.13.2",
+    "jsdom": "^26.1.0",
+    "turndown": "^7.2.1",
+    "turndown-plugin-gfm": "^1.0.2"
+  }
+}

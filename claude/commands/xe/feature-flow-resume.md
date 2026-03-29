@@ -40,7 +40,7 @@ node claude/utils/state-manager.js list
 #  需求名称         当前阶段                    状态
 ────────────────────────────────────────────────────
 1  用户登录      java-coding                🟡 进行中
-2  订单支付      unit-test                  🟡 进行中
+2  订单支付      evaluator                  🟡 进行中
 3  消息推送      tech-plan                  🟡 进行中
 4  数据导出      tech-plan                  ✅ 已完成
 
@@ -66,19 +66,34 @@ node claude/utils/state-manager.js get "{需求名称}"
 
 ### 阶段判断表
 
-| current_stage | 下一步操作 | Agent 调用 | 说明 |
-|--------------|-----------|-----------|------|
-| `tech-plan` | 技术设计中 | Agent(agent-xe-tech-plan) | 继续设计 |
-| `task-list`（历史兼容） | 旧流程停留在任务整理阶段 | Agent(agent-xe-java-coding) / Agent(xe-tdd-implementation) | 直接读取已生成的 `开发任务.md` 或 `技术设计.md`，进入实现阶段 |
-| `tech-plan` ✅ | 双文档已完成，可直接进入实现 | Agent(agent-xe-java-coding) / Agent(xe-tdd-implementation) | `技术设计.md` 与 `开发任务.md` 已由 tech-plan 自动生成 |
-| `java-coding` | 代码实现中 | Agent(agent-xe-java-coding) | 继续开发 |
-| `java-coding` ✅ | 代码已完成，进入自测 | Agent(agent-xe-unit-test) | 执行单元测试 |
-| `unit-test` | 代码自测中 | Agent(agent-xe-unit-test) | 继续测试 |
-| `unit-test` ✅ | 所有开发完成 | Agent(everything-claude-code:code-reviewer) | 代码评审 |
+恢复时优先按以下顺序判断：
 
-> **流程**：tech-plan → java-coding / tdd-implementation → unit-test / code-review
->
-> 兼容说明：旧状态如停留在 `task-list`，恢复时应直接读取已生成的 `开发任务.md` 或 `技术设计.md`，继续进入实现阶段。
+1. `next_action`
+2. `current_stage`
+3. `stages[stage].status`
+4. 历史阶段兼容映射
+
+| current_stage / next_action | 下一步操作 | Agent 调用 | 说明 |
+|----------------------------|-----------|-----------|------|
+| `tech-plan` | 技术设计中 | Agent(agent-xe-tech-plan) | 继续设计或澄清需求 |
+| `tech-plan` + `next_action = java-coding` | 进入实现阶段 | Agent(agent-xe-java-coding) | 技术设计与开发任务文档已具备 |
+| `java-coding` | 代码实现中 | Agent(agent-xe-java-coding) | 继续开发或恢复上下文 |
+| `java-coding` + `next_action = evaluator` | 进入独立评估 | Agent(agent-xe-evaluator) | 实现与基础自检已完成 |
+| `evaluator` | 独立评估中 | Agent(agent-xe-evaluator) | 继续验收与生成评估报告 |
+| `evaluator` + `next_action = manual_review_or_commit` | 人工复核/提交 | 人工后续动作 | 评估已通过 |
+| `evaluator` + `next_action = fix_issues` | 回到修复阶段 | Agent(agent-xe-java-coding) | 根据 issue list 修复后再次评估 |
+
+### 历史阶段兼容
+
+旧状态只做最小兼容映射，不再作为主流程阶段：
+
+| 旧阶段 | 恢复目标 | 说明 |
+|-------|---------|------|
+| `task-list` | `java-coding` | 旧任务整理阶段已被 `tech-plan` 自动生成的 `开发任务.md` 替代 |
+| `tdd-implementation` | `java-coding` | 旧实现阶段并入 `java-coding` |
+| `code-execution` | `java-coding` | 旧执行阶段并入 `java-coding` |
+| `unit-test` | `evaluator` | 基础自检已并入 `java-coding`，独立验收由 `evaluator` 承担 |
+| `code-review` | flow 外人工动作 | 不再作为 feature-flow 正式阶段 |
 
 ### 状态文件不存在
 
@@ -107,7 +122,7 @@ node claude/utils/state-manager.js list
 
 ### 步骤 2：分析当前阶段
 
-对每个需求，从 `state.json` 读取 `current_stage` 字段。
+对每个需求，优先读取 `next_action`，再结合 `current_stage` 与 `stages[stage].status` 判断恢复目标。
 
 ### 步骤 3：展示选择列表
 
@@ -135,7 +150,7 @@ node claude/utils/state-manager.js list
 #  需求名称         当前阶段                    状态          更新时间
 ────────────────────────────────────────────────────────────────────
 1  用户登录      java-coding                🟡 进行中      2026-03-11 14:30
-2  订单支付      unit-test                  🟡 进行中      2026-03-10 10:15
+2  订单支付      evaluator                  🟡 进行中      2026-03-10 10:15
 
 请选择要恢复的需求 [1-2]，或输入需求名称：
 ```
@@ -186,7 +201,7 @@ Agent 完成后，显示完成摘要：
     "java-coding": {
       "status": "in_progress"
     },
-    "unit-test": {
+    "evaluator": {
       "status": "pending"
     }
   },
@@ -224,10 +239,10 @@ Agent 完成后，显示完成摘要：
 | `claude/utils/state-manager.js` | 状态管理工具 |
 | `claude/agents/agent-xe-tech-plan.md` | Tech-Plan Agent |
 | `claude/agents/agent-xe-java-coding.md` | Java-Coding Agent |
-| `claude/agents/agent-xe-unit-test.md` | Unit-Test Agent |
+| `claude/agents/agent-xe-evaluator.md` | Evaluator Agent |
 
 ## 注意事项
 
 - 需求名称必须与 `state.json` 中的 `requirement.name` 一致
 - 如果找不到任何状态文件，提示用户使用 `/xe:feature-flow` 从头开始
-- 旧版 feature-flow 创建的需求没有 `state.json`，需要提示用户升级
+- 旧版 feature-flow 创建的需求若仍停留在 `task-list`、`tdd-implementation`、`code-execution` 或 `unit-test`，恢复时应按兼容映射落到新链路
