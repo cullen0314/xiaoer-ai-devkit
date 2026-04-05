@@ -1,0 +1,93 @@
+{
+  "requirement": {
+    "name": "openagent_resume_smoke",
+    "prd_url": "https://example.com/prd",
+    "description": "支持用户登录",
+    "created_at": "2026-03-30T02:17:55.079Z"
+  },
+  "current_stage": "java-coding",
+  "current_substage": "completed",
+  "next_action": "java-coding",
+  "approved_sections": [],
+  "artifacts": {
+    "tech_plan_doc": "docs/openagent_resume_smoke/技术设计.md",
+    "tech_design_doc": "docs/openagent_resume_smoke/技术设计.md",
+    "dev_task_doc": "docs/openagent_resume_smoke/开发任务.md",
+    "task_list_doc": "docs/openagent_resume_smoke/开发任务.md",
+    "task_source_doc": "docs/openagent_resume_smoke/技术设计.md",
+    "state_file": "docs/openagent_resume_smoke/state.json",
+    "feishu_doc_url": ""
+  },
+  "stages": {
+    "tech-plan": {
+      "status": "completed",
+      "output": "docs/openagent_resume_smoke/技术设计.md",
+      "completed_at": "2026-03-30T03:02:54.816Z",
+      "substage": "completed",
+      "next_action": "java-coding",
+      "artifacts": {
+        "tech_plan_doc": "docs/openagent_resume_smoke/技术设计.md",
+        "tech_design_doc": "docs/openagent_resume_smoke/技术设计.md",
+        "dev_task_doc": "docs/openagent_resume_smoke/开发任务.md",
+        "task_list_doc": "docs/openagent_resume_smoke/开发任务.md",
+        "task_source_doc": "docs/openagent_resume_smoke/技术设计.md",
+        "state_file": "docs/openagent_resume_smoke/state.json",
+        "feishu_doc_url": ""
+      },
+      "clarification": {
+        "can_proceed_to_design": false,
+        "missing_categories": [],
+        "known_facts": [],
+        "blocking_points": [],
+        "asked_questions": [],
+        "resolved_questions": [],
+        "new_facts": [],
+        "remaining_blockers": [],
+        "current_question": "",
+        "question_reason": "",
+        "clarification_summary": {
+          "known": [],
+          "unknown": [],
+          "why_blocked": "",
+          "next_question": ""
+        }
+      }
+    },
+    "java-coding": {
+      "status": "pending"
+    },
+    "evaluator": {
+      "status": "pending"
+    }
+  },
+  "artifact_roles": {
+    "design": "tech_plan_doc",
+    "task": "dev_task_doc",
+    "taskSource": "task_source_doc",
+    "state": "state_file"
+  },
+  "decisions": [
+    {
+      "text": "用户已确认方案",
+      "timestamp": "2026-03-30T03:02:55.012Z"
+    }
+  ],
+  "clarification": {
+    "can_proceed_to_design": false,
+    "missing_categories": [],
+    "known_facts": [],
+    "blocking_points": [],
+    "asked_questions": [],
+    "resolved_questions": [],
+    "new_facts": [],
+    "remaining_blockers": [],
+    "current_question": "",
+    "question_reason": "",
+    "clarification_summary": {
+      "known": [],
+      "unknown": [],
+      "why_blocked": "",
+      "next_question": ""
+    }
+  }
+}

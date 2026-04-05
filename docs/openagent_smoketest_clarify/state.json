@@ -1,0 +1,39 @@
+{
+  "requirement": {
+    "name": "openagent_smoketest_clarify",
+    "prd_url": "https://example.com/prd",
+    "description": "支持用户登录的范围和流程待确认",
+    "created_at": "2026-03-30T02:11:55.229Z"
+  },
+  "current_stage": "tech-plan",
+  "current_substage": "initializing",
+  "next_action": "read_prd",
+  "approved_sections": [],
+  "artifacts": {
+    "tech_plan_doc": "",
+    "tech_design_doc": "",
+    "dev_task_doc": "",
+    "task_list_doc": "",
+    "task_source_doc": "",
+    "state_file": "docs/openagent_smoketest_clarify/state.json",
+    "feishu_doc_url": ""
+  },
+  "stages": {
+    "tech-plan": {
+      "status": "in_progress"
+    },
+    "java-coding": {
+      "status": "pending"
+    },
+    "evaluator": {
+      "status": "pending"
+    }
+  },
+  "artifact_roles": {
+    "design": "tech_plan_doc",
+    "task": "dev_task_doc",
+    "taskSource": "task_source_doc",
+    "state": "state_file"
+  },
+  "decisions": []
+}

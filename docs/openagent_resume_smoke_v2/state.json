@@ -1,0 +1,121 @@
+{
+  "requirement": {
+    "name": "openagent_resume_smoke_v2",
+    "prd_url": "https://example.com/prd",
+    "description": "支持用户登录",
+    "created_at": "2026-03-30T03:10:00Z"
+  },
+  "current_stage": "java-coding",
+  "current_substage": "completed",
+  "next_action": "java-coding",
+  "approved_sections": [],
+  "artifacts": {
+    "tech_plan_doc": "docs/openagent_resume_smoke_v2/技术设计.md",
+    "tech_design_doc": "docs/openagent_resume_smoke_v2/技术设计.md",
+    "dev_task_doc": "docs/openagent_resume_smoke_v2/开发任务.md",
+    "task_list_doc": "docs/openagent_resume_smoke_v2/开发任务.md",
+    "task_source_doc": "docs/openagent_resume_smoke_v2/技术设计.md",
+    "state_file": "docs/openagent_resume_smoke_v2/state.json",
+    "feishu_doc_url": ""
+  },
+  "stages": {
+    "tech-plan": {
+      "status": "completed",
+      "output": "docs/openagent_resume_smoke_v2/技术设计.md",
+      "completed_at": "2026-03-30T03:24:44.274Z",
+      "substage": "completed",
+      "next_action": "java-coding",
+      "artifacts": {
+        "tech_plan_doc": "docs/openagent_resume_smoke_v2/技术设计.md",
+        "tech_design_doc": "docs/openagent_resume_smoke_v2/技术设计.md",
+        "dev_task_doc": "docs/openagent_resume_smoke_v2/开发任务.md",
+        "task_list_doc": "docs/openagent_resume_smoke_v2/开发任务.md",
+        "task_source_doc": "docs/openagent_resume_smoke_v2/技术设计.md",
+        "state_file": "docs/openagent_resume_smoke_v2/state.json",
+        "feishu_doc_url": ""
+      },
+      "clarification": {
+        "can_proceed_to_design": true,
+        "missing_categories": [],
+        "known_facts": [
+          "需求描述：支持用户登录",
+          "需求与登录相关",
+          "用户补充：本期功能范围包含账号密码登录，不包含短信验证码登录，关键流程和接口输入输出已明确，并有性能约束和目标说明"
+        ],
+        "blocking_points": [],
+        "asked_questions": [
+          "本期功能范围具体包含什么、不包含什么？"
+        ],
+        "resolved_questions": [
+          "本期功能范围具体包含什么、不包含什么？"
+        ],
+        "new_facts": [
+          "本期功能范围包含账号密码登录，不包含短信验证码登录，关键流程和接口输入输出已明确，并有性能约束和目标说明"
+        ],
+        "remaining_blockers": [],
+        "current_question": "",
+        "question_reason": "",
+        "clarification_summary": {
+          "known": [
+            "需求描述：支持用户登录",
+            "需求与登录相关",
+            "用户补充：本期功能范围包含账号密码登录，不包含短信验证码登录，关键流程和接口输入输出已明确，并有性能约束和目标说明"
+          ],
+          "unknown": [],
+          "why_blocked": "",
+          "next_question": ""
+        }
+      }
+    },
+    "java-coding": {
+      "status": "pending"
+    },
+    "evaluator": {
+      "status": "pending"
+    }
+  },
+  "artifact_roles": {
+    "design": "tech_plan_doc",
+    "task": "dev_task_doc",
+    "taskSource": "task_source_doc",
+    "state": "state_file"
+  },
+  "decisions": [
+    {
+      "text": "用户已确认方案",
+      "timestamp": "2026-03-30T03:24:44.346Z"
+    }
+  ],
+  "clarification": {
+    "can_proceed_to_design": true,
+    "missing_categories": [],
+    "known_facts": [
+      "需求描述：支持用户登录",
+      "需求与登录相关",
+      "用户补充：本期功能范围包含账号密码登录，不包含短信验证码登录，关键流程和接口输入输出已明确，并有性能约束和目标说明"
+    ],
+    "blocking_points": [],
+    "asked_questions": [
+      "本期功能范围具体包含什么、不包含什么？"
+    ],
+    "resolved_questions": [
+      "本期功能范围具体包含什么、不包含什么？"
+    ],
+    "new_facts": [
+      "本期功能范围包含账号密码登录，不包含短信验证码登录，关键流程和接口输入输出已明确，并有性能约束和目标说明"
+    ],
+    "remaining_blockers": [],
+    "current_question": "",
+    "question_reason": "",
+    "clarification_summary": {
+      "known": [
+        "需求描述：支持用户登录",
+        "需求与登录相关",
+        "用户补充：本期功能范围包含账号密码登录，不包含短信验证码登录，关键流程和接口输入输出已明确，并有性能约束和目标说明"
+      ],
+      "unknown": [],
+      "why_blocked": "",
+      "next_question": ""
+    }
+  }
+}

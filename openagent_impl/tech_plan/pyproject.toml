@@ -1,0 +1,19 @@
+[project]
+name = "xiaoer-ai-devkit-openagent-tech-plan"
+version = "0.1.0"
+description = "Independent openagent-style tech-plan agent for xiaoer-ai-devkit"
+requires-python = ">=3.11"
+dependencies = [
+  "langchain>=1.0.0,<2.0.0",
+  "langchain-anthropic>=1.0.0,<2.0.0",
+  "pydantic>=2.0.0,<3.0.0"
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.0.0,<9.0.0"
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

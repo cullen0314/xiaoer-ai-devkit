@@ -1,0 +1,44 @@
+{
+  "requirement": {
+    "name": "deepagents_mvp_smoketest",
+    "prd_url": "https://example.com/prd",
+    "description": "smoke test",
+    "created_at": "2026-03-29T16:26:35.389Z"
+  },
+  "current_stage": "java-coding",
+  "current_substage": "completed",
+  "next_action": "java-coding",
+  "approved_sections": [],
+  "artifacts": {
+    "tech_plan_doc": "docs/deepagents_mvp_smoketest/技术设计.md",
+    "dev_task_doc": "docs/deepagents_mvp_smoketest/开发任务.md",
+    "state_file": "docs/deepagents_mvp_smoketest/state.json"
+  },
+  "stages": {
+    "tech-plan": {
+      "status": "completed",
+      "output": "docs/deepagents_mvp_smoketest/技术设计.md",
+      "completed_at": "2026-03-29T16:26:35.536Z",
+      "substage": "completed",
+      "next_action": "java-coding",
+      "artifacts": {
+        "tech_plan_doc": "docs/deepagents_mvp_smoketest/技术设计.md",
+        "dev_task_doc": "docs/deepagents_mvp_smoketest/开发任务.md",
+        "state_file": "docs/deepagents_mvp_smoketest/state.json"
+      }
+    },
+    "java-coding": {
+      "status": "pending"
+    },
+    "evaluator": {
+      "status": "pending"
+    }
+  },
+  "artifact_roles": {
+    "design": "tech_plan_doc",
+    "task": "dev_task_doc",
+    "taskSource": "task_source_doc",
+    "state": "state_file"
+  },
+  "decisions": []
+}
