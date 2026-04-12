@@ -1,0 +1,19 @@
+{
+  "name": "code-chain-tracer",
+  "version": "1.0.0",
+  "description": "预扫描 Java 项目，建立 MQ/Dubbo/Controller/EventListener 索引，支持业务链路追踪",
+  "main": "skill.js",
+  "scripts": {
+    "start": "node skill.js"
+  },
+  "keywords": [
+    "claude-code-skill",
+    "java",
+    "chain-tracer",
+    "mq",
+    "dubbo"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {}
+}

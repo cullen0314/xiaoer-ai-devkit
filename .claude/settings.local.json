@@ -149,7 +149,12 @@
       "Bash(bash \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/web-doc-zh/run.sh\" --preview \"https://developer.harness.io/docs/?_gl=1*177b1m6*_ga_46758J5H8P*czE3NzQ3NTY2NzEkbzEkZzEkdDE3NzQ3NTY2ODEkajUwJGwwJGgw\")",
       "Bash(bash \"/Users/wangyijun/Documents/common-project/xiaoer-ai-devkit/claude/skills/web-doc-zh/run.sh\" --preview \"https://developer.harness.io/docs/platform/knowledgebase/custom-implementations/ansible\")",
       "Skill(feishu-doc-read)",
-      "Bash(REQ=\"__feature_flow_plan_test__\")"
+      "Bash(REQ=\"__feature_flow_plan_test__\")",
+      "Bash(bash:*)",
+      "Bash(gh api:*)",
+      "mcp__plugin_claude-mem_mcp-search__get_observations",
+      "mcp__plugin_claude-mem_mcp-search__smart_outline",
+      "Bash(wc -l /Users/wangyijun/Developer/Projects/xiaoer-ai-devkit/claude/skills/code-chain-tracer/*)"
     ]
   }
 }

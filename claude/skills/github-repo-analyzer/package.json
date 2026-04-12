@@ -1,0 +1,18 @@
+{
+  "name": "github-repo-analyzer",
+  "version": "1.0.0",
+  "description": "分析 GitHub 仓库并生成结构化项目解析文档",
+  "main": "skill.js",
+  "scripts": {
+    "start": "node skill.js"
+  },
+  "keywords": [
+    "claude-code-skill",
+    "github",
+    "analyzer",
+    "documentation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {}
+}

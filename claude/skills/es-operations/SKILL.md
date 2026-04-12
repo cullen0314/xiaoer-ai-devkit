@@ -1,5 +1,5 @@
 ---
-name: es-operations
+name:  
 description: Elasticsearch 索引操作工具，支持完整的 CRUD 查询和写入
 allowed-tools: [Read, Write, Bash]
 ---
