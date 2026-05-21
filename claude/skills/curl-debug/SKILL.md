@@ -1,127 +1,96 @@
 ---
 name: curl-debug
-description: 根据用户提供的 curl 命令诊断接口问题；当用户说“分析这个 curl”、“curl-debug”、“接口报错排查”、“根据 curl 定位问题”或粘贴 curl 请求并要求排障时使用。该 Skill 替代旧的 /xe:curl-debug command 和 agent-curl-debug agent。
-allowed-tools: [Bash, Read, Grep, Glob, Skill]
+description: 根据用户提供的 curl 和辅助描述，定位接口对应代码链路，分析问题原因并提供修复建议。
+allowed-tools: [Read, Grep, Glob, Bash, Skill, AskUserQuestion]
 ---
 
 # curl-debug
 
-根据 curl 命令、响应结果、辅助说明和本地代码定位接口问题。只做诊断分析，不修改代码。
+curl-debug 是接口链路代码诊断 Skill。curl 只是定位入口线索，不是默认执行对象。
 
-## 输入处理
+## 职责
 
-从用户消息中提取：
+核心目标：定位接口对应代码链路，分析问题原因并提供修复建议。
 
-- `curl_command`：完整 curl block，必须保留反斜杠续行、Header、Cookie、Body。
-- `aux_info`：问题、预期、实际、环境、TraceID、错误日志、背景。
-- `output_format`：默认 `text`；用户明确要求时可输出 `md` 或 `json`。
+输入：curl 原文，以及问题现象、预期/实际结果、错误响应、TraceID、错误日志、环境信息等辅助描述。
 
-如果缺少完整 URL，或 curl 被脱敏到无法判断真实请求，先向用户追问。
+具体职责：
+- 解析 curl，提取方法、URL、path、query、headers、body、关键业务参数
+- 定位 Controller / Route / Handler 等接口入口
+- 从接口入口出发，沿实际代码调用关系追踪完整处理链路，包括但不限于业务逻辑、数据访问、权限校验、状态判断、外部依赖等
+- 结合错误码、错误文案、日志、TraceID、数据库证据或代码分支判断根因
+- 给出具体修复建议
 
-## 诊断流程
+非目标：不默认执行 curl；不做压测、批量重放、攻击验证；不直接修改代码；不在证据不足时输出确定根因。
 
-### 1. 解析请求画像
+## 执行流程
 
-识别以下信息：
+### 1. 判断是否需要澄清
 
-- HTTP 方法：显式 `-X` 优先；有 `--data`/`-d` 且无 `-X` 时按 POST；否则按 GET。
-- URL 与 path。
-- Headers：重点关注 `Content-Type`、`Authorization`、`token`、`Cookie`、租户/仓库/用户相关 Header。
-- Body：JSON、form、query string 分开处理。
+缺少关键信息导致无法开始分析时，使用 AskUserQuestion 提问：
+- 没有 curl，且无法识别接口 path
+- curl 缺失 URL 或被截断
+- 当前代码库无法定位接口入口，需要确认服务/仓库
+- 用户只说“有问题”，但没有说明预期和实际差异
+- 需要执行 POST/PUT/PATCH/DELETE 等可能有副作用的请求
 
-输出和记录中必须脱敏敏感值：`Authorization`、`Cookie`、`token`、`access_token`、`session`。
+提问最多 3 个，一次问完阻塞项；能先做静态代码分析就先分析，不要过早提问。
 
-### 2. 执行请求
+### 2. 解析 curl
 
-优先执行带指标的 curl。不要写成 `curl ... {完整curl命令}`。
+提取：
+- HTTP 方法
+- 完整 URL 和接口 path
+- query 参数
+- headers，仅判断鉴权、租户、仓库、用户相关 header 是否存在，不输出敏感明文
+- body 和关键业务参数
 
-做法：复制用户原始 curl，并把诊断参数插入初始 `curl` 后面：
+curl 默认不执行；token、cookie、authorization 必须脱敏。
 
-```bash
-curl -sS -i --max-time 30 -w '\n---CURL_DEBUG_META---\ntime_total:%{time_total}\nhttp_code:%{http_code}\nremote_ip:%{remote_ip}\n' ...
-```
+### 3. 定位接口入口
 
-如果原始命令引号复杂，先执行原始 curl，再在不破坏语义的前提下补充 `-i -w` 复测。
+按 path 搜索当前代码库：
+- Spring Boot：`@RequestMapping`、`@GetMapping`、`@PostMapping`、Controller
+- Node：router / app route
+- Python：view / router
+- Go：handler / router
 
-请求不可达时：
+搜索优先级：完整 path → 去掉网关/服务前缀后的 path → 末级 path → body/query 业务关键词 → 错误码或错误文案。
 
-- 不要编造响应。
-- 如果用户提供了实际响应、错误日志或 TraceID，可以继续基于这些证据分析，并在 `verification.curl_executed` 标记为 `failed`。
-- 如果没有其他证据，返回 `execution_failed`。
+找不到入口时，使用 AskUserQuestion 让用户确认服务名、仓库或补充代码位置。
 
-### 3. 按响应分类
+### 4. 追踪代码链路
 
-| 观察结果 | 优先方向 |
-| --- | --- |
-| 2xx | 对比预期与实际响应字段 |
-| 301/302 | 检查重定向、登录态、是否缺 `-L` |
-| 400 | 参数格式、必填项、枚举、JSON/form 类型 |
-| 401 | Token/Cookie 失效或鉴权 Header 缺失 |
-| 403 | 权限、角色、租户、仓库隔离 |
-| 404 | URL、网关前缀、Controller/Route 映射 |
-| 422/423 | 业务校验、数据状态 |
-| 500 | 服务端异常、空指针、下游异常、错误码 |
-| 502/503/504 | 网关、服务不可用、下游超时 |
+从接口入口开始，按实际调用关系逐层读取代码。
 
-### 4. 定位代码
+重点关注：
+- 入参解析与转换
+- 参数校验
+- 权限、租户、仓库、组织等隔离逻辑
+- 业务状态判断
+- 数据读取与写入条件
+- 错误码、异常、返回值产生位置
+- RPC / HTTP / MQ / Redis / DB 等外部依赖
 
-先识别项目类型：
+每个关键节点记录文件路径、方法名、关键判断条件和证据行号。
 
-- Spring Boot：`@RestController`、`@RequestMapping`、`@GetMapping`、`@PostMapping`
-- Node.js：`router.`、`app.`
-- Django/FastAPI：`@api_view`、`@router`
-- Go：`http.HandleFunc`、`gin.`
+### 5. 匹配问题现象
 
-根据 path 拆关键词，优先搜索：
+将辅助描述与代码链路对照：错误码、错误文案、异常类、日志关键词、参数名、枚举值、状态字段、数据存在性、权限/租户/仓库隔离条件、外部依赖失败点。
 
-```bash
-rg -n "@(RequestMapping|GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping).*关键词|关键词.*Controller|错误码|响应文案" .
-```
+目标是定位到具体方法或分支，而不是只给泛泛方向。
 
-定位到入口后继续读 Controller/Service/Mapper/Repository，找到参数校验、业务错误码、数据库查询或下游调用证据。所有代码结论必须带文件路径和行号。
+### 6. 必要时补证
 
-### 5. 可选日志和数据库补证
+只有代码链路不足以判断时才补证：
+- 有 TraceID：查日志
+- 涉及数据状态：用 mysql-executor 查询只读 SELECT
+- 用户明确允许且请求安全：才执行 curl
 
-- 有 TraceID：优先使用可用的日志查询 Skill 或命令查询服务端日志；没有可用入口时说明缺少日志能力。
-- 需要查数据：先从代码中确认表名和查询条件，再用 `mysql-executor` 执行只读 `SELECT`；禁止为了诊断执行写操作。
-- 没有代码库、日志或数据库证据时，不输出确定根因，只输出最可能方向和下一步需要的证据。
+补证服务于代码归因，不把 curl 重放作为默认步骤。
 
-## 输出协议
+### 7. 输出诊断报告
 
-最终状态只能是：
+输出：结论摘要、请求画像、代码链路、根因分析、证据等级（确定根因 / 高度怀疑 / 待确认）、修复建议（具体到文件、方法、逻辑分支）、仍需补充的信息。
 
-- `completed`：有足够证据形成诊断结论。
-- `need_clarification`：缺少继续诊断的关键信息。
-- `execution_failed`：当前环境无法执行请求，且没有其他证据可继续分析。
-
-默认输出：
-
-```markdown
-status: completed | need_clarification | execution_failed
-stage: curl-debug
-summary: 一句话说明结论或阻塞原因
-
-verification:
-- curl_executed: passed | failed | skipped
-- request_parsed: passed | failed
-- response_classified: passed | skipped
-- code_search: passed | failed | skipped
-- log_or_db_check: passed | failed | skipped
-
-report:
-1. 请求画像：方法、path、关键参数、敏感信息脱敏
-2. 调用结果：HTTP 状态、业务错误码、核心响应、耗时
-3. 问题定位：具体原因、证据链
-4. 相关代码：文件:行号
-5. 处理建议：可执行的下一步
-```
-
-用户要求 `json` 时，输出同等字段的合法 JSON。
-
-## 规则
-
-- 只读分析，不改代码。
-- 不泄露 token、cookie、authorization。
-- 不在证据不足时给确定根因。
-- 优先给 20 行以内的高信号结论；必要证据可附在后面。
-- 旧 `/xe:curl-debug` command 和 `agent-curl-debug` agent 已废弃，不再使用 Agent 派发。
+规则：中文输出；文件路径和方法名必须来自真实代码；不泄露敏感信息；证据不足时不要输出确定根因。
