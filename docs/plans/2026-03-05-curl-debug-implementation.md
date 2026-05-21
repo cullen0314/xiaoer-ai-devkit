@@ -1,5 +1,7 @@
 # curl-debug 命令实现计划
 
+> 已废弃：旧 `/xe:curl-debug` command 与 `agent-curl-debug` agent 已迁移为 `claude/skills/curl-debug/SKILL.md`。本文仅保留历史实现计划。
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** 为 xiaoer-ai-devkit 新增 `xe:curl-debug` 命令，实现根据 curl 命令深度诊断接口问题的功能。

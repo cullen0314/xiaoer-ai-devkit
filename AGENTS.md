@@ -57,7 +57,6 @@
 
 - `claude/commands/xe/feature-flow.md`
 - `claude/commands/xe/feature-flow-resume.md`
-- `claude/commands/xe/curl-debug.md`
 - `claude/commands/xe/new-branch.md`
 
 #### `claude/agents/`
@@ -76,7 +75,6 @@
 - `claude/agents/agent-xe-java-coding.md`
 - `claude/agents/agent-xe-unit-test.md`
 - `claude/agents/xe-task-executor.md`
-- `claude/agents/agent-curl-debug.md`
 
 #### `claude/skills/`
 
@@ -93,6 +91,7 @@
 - `claude/skills/feishu-doc-write/`
 - `claude/skills/feishu-doc-read/`
 - `claude/skills/feishu-doc-write/`
+- `claude/skills/curl-debug/`
 - `claude/skills/code-execution/`
 
 #### `claude/plugins/`
@@ -220,8 +219,7 @@ Tech-Plan → Task-List → Java-Coding → Unit-Test → Verify → Review
 
 入口：
 
-- `/xe:curl-debug`
-- `agent-curl-debug`
+- `curl-debug` Skill
 
 适用场景：
 

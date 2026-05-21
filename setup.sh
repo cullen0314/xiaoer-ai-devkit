@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 # Xiaoer AI DevKit 安装脚本
 # 用于配置 Claude Code 的 Commands、Agents 和 Skills
 

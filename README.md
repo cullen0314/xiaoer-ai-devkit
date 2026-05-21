@@ -33,16 +33,18 @@ cd /Users/wangyijun/Documents/common-project/xiaoer-ai-devkit
 
 - **Commands**: `/xe:command-name`
 - **Agents**: 通过 Task 工具调用
-- **Skills**: `Skill(skill-name)` 或 `bash run.sh`
+- **Skills**: 自动触发或 `Skill(skill-name)`；部分 Skill 提供 `bash run.sh`
 
 ## 可用组件
 
 ### Commands
 - `new-branch` - 创建符合规范的 git 分支
-- `curl-debug` - 根据 curl 命令深度诊断接口问题
 
 ### Agents
 - `xe-task-executor` - 执行明确的代码任务
+
+### Skills
+- `curl-debug` - 根据 curl 命令诊断接口问题
 
 ## 开发指南
 

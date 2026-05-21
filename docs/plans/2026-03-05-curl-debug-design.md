@@ -1,5 +1,7 @@
 # curl-debug 命令设计文档
 
+> 已废弃：旧 `/xe:curl-debug` command 与 `agent-curl-debug` agent 已迁移为 `claude/skills/curl-debug/SKILL.md`。本文仅保留历史设计背景。
+
 ## 概述
 
 为 xiaoer-ai-devkit 新增 `xe:curl-debug` 命令，用于根据用户输入的 curl 命令深度诊断接口问题。

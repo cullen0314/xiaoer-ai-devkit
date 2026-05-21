@@ -154,7 +154,9 @@
       "Bash(gh api:*)",
       "mcp__plugin_claude-mem_mcp-search__get_observations",
       "mcp__plugin_claude-mem_mcp-search__smart_outline",
-      "Bash(wc -l /Users/wangyijun/Developer/Projects/xiaoer-ai-devkit/claude/skills/code-chain-tracer/*)"
+      "Bash(wc -l /Users/wangyijun/Developer/Projects/xiaoer-ai-devkit/claude/skills/code-chain-tracer/*)",
+      "Read(//Users/wangyijun/.claude/skills/**)",
+      "Read(//Users/wangyijun/.claude/**)"
     ]
   }
 }
