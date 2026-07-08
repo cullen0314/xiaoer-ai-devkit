@@ -10,30 +10,21 @@ list_skills() {
 }
 
 if [ -z "$1" ]; then
-    echo "用法: $0 <skill-name>"
+    echo "用法: $0 <skill-name> [skill-name...]"
     echo ""
     echo "可用的 skills:"
     list_skills | sed 's/^/  /'
     exit 0
 fi
 
-SKILL_NAME="$1"
-SOURCE_DIR="$SKILLS_SOURCE_DIR/$SKILL_NAME"
-
-if [ ! -f "$SOURCE_DIR/SKILL.md" ]; then
-    echo "❌ skill 不存在: $SKILL_NAME"
-    echo ""
-    echo "可用的 skills:"
-    list_skills | sed 's/^/  /'
-    exit 1
-fi
-
 install_to() {
-    local target_dir="$1"
+    local source_dir="$1"
+    local target_dir="$2"
+
     mkdir -p "$target_dir"
     rm -rf "$target_dir"
     mkdir -p "$target_dir"
-    (cd "$SOURCE_DIR" && tar --exclude='node_modules' -cf - .) | (cd "$target_dir" && tar -xf -)
+    (cd "$source_dir" && tar --exclude='node_modules' -cf - .) | (cd "$target_dir" && tar -xf -)
     find "$target_dir" -type f -name "*.sh" -exec chmod +x {} \;
 
     if [ -f "$target_dir/package.json" ]; then
@@ -42,23 +33,40 @@ install_to() {
     fi
 }
 
-echo "🚀 安装 skill: $SKILL_NAME"
-echo ""
+install_skill() {
+    local skill_name="$1"
+    local source_dir="$SKILLS_SOURCE_DIR/$skill_name"
 
-# 安装到 ~/.claude/skills/
-CLAUDE_TARGET="$HOME/.claude/skills/$SKILL_NAME"
-echo "📁 安装到 ~/.claude/skills/$SKILL_NAME ..."
-install_to "$CLAUDE_TARGET"
-echo "   ✅ 完成"
+    if [ ! -f "$source_dir/SKILL.md" ]; then
+        echo "❌ skill 不存在: $skill_name"
+        echo ""
+        echo "可用的 skills:"
+        list_skills | sed 's/^/  /'
+        exit 1
+    fi
 
-# 安装到 ~/.codex/skills/（目录存在才执行）
-CODEX_SKILLS_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
-if [ -d "$CODEX_SKILLS_DIR" ]; then
-    CODEX_TARGET="$CODEX_SKILLS_DIR/$SKILL_NAME"
-    echo "📁 安装到 $CODEX_SKILLS_DIR/$SKILL_NAME ..."
-    install_to "$CODEX_TARGET"
+    echo "🚀 安装 skill: $skill_name"
+    echo ""
+
+    # 安装到 ~/.claude/skills/
+    local claude_target="$HOME/.claude/skills/$skill_name"
+    echo "📁 安装到 ~/.claude/skills/$skill_name ..."
+    install_to "$source_dir" "$claude_target"
     echo "   ✅ 完成"
-fi
 
-echo ""
-echo "✅ skill 安装完成: $SKILL_NAME"
+    # 安装到 ~/.codex/skills/（目录存在才执行）
+    local codex_skills_dir="${CODEX_HOME:-$HOME/.codex}/skills"
+    if [ -d "$codex_skills_dir" ]; then
+        local codex_target="$codex_skills_dir/$skill_name"
+        echo "📁 安装到 $codex_skills_dir/$skill_name ..."
+        install_to "$source_dir" "$codex_target"
+        echo "   ✅ 完成"
+    fi
+
+    echo ""
+    echo "✅ skill 安装完成: $skill_name"
+}
+
+for skill_name in "$@"; do
+    install_skill "$skill_name"
+done
