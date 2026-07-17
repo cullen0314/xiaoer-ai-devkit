@@ -1,0 +1,7 @@
+interface:
+  display_name: "Skill Distiller"
+  short_description: "Context-first personal Skill drafting"
+  default_prompt: "Use $skill-distiller to turn this workflow into a reusable personal SKILL.md draft."
+
+policy:
+  allow_implicit_invocation: true

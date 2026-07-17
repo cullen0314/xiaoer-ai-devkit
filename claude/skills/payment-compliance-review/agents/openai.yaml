@@ -1,0 +1,6 @@
+interface:
+  display_name: "支付审核合规检查"
+  short_description: "按标准流程检查支付审核风险"
+  default_prompt: "使用 $payment-compliance-review 按目标支付平台的官方政策检查当前项目的支付审核风险，并输出阻断项、整改优先级和验证清单。"
+policy:
+  allow_implicit_invocation: true
