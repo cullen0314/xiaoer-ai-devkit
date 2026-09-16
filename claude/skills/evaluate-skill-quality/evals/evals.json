@@ -1,0 +1,41 @@
+{
+  "skill_name": "evaluate-skill-quality",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "评估一个只有 45 行、职责单一、全程只读且没有 scripts 或 evals 的查询型 Skill。不要因为它简单就机械扣分。",
+      "expected_output": "识别简单 Skill 的验证资产可能不适用；仍检查输入、输出、失败处理和触发边界。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "评估一个 650 行的复杂编排 Skill，其中大部分篇幅是低频平台差异和重复 JSON Schema。",
+      "expected_output": "报告长度、token 和信息密度；建议将低频差异下沉 reference、将确定性 Schema 校验脚本化，而不是仅凭超过 500 行判失败。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "评估一个声明 Write(*) 和 Edit(*)、目标是生成文档，但没有限定写入目录的 Skill。",
+      "expected_output": "将缺少写入边界作为有实际影响的安全或路径问题，并说明 allowed-tools 不能替代正文行为约束。",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "评估仓库中的新版本 Skill，并检查 ~/.claude/skills 下的同名安装版本及其直接子 Skill。",
+      "expected_output": "分开给出源码静态质量和当前运行质量；发现内容或契约漂移时不得反向降低源码设计分。",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "评估一个使用固定输出模板、明确停止条件，但内部分析允许模型根据上下文选择方法的研究型 Skill。",
+      "expected_output": "认可外部契约低自由度、内部推理高自由度的设计，不要求整个 Skill 都脚本化。",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "评估一个引用不存在的 reference、在 Bash 变量中使用引号包裹的 ~/ 路径，并且没有失败处理的 Skill。",
+      "expected_output": "提供引用和路径的确定性证据；说明触发条件与可观察影响，按严重度去重输出。",
+      "files": []
+    }
+  ]
+}

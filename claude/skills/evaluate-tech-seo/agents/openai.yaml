@@ -1,0 +1,4 @@
+interface:
+  display_name: "技术 SEO 评估"
+  short_description: "系统评估网站抓取、索引、规范化、多语言与性能风险"
+  default_prompt: "使用 $evaluate-tech-seo 审计 https://example.com 的技术 SEO，并结合代码库与 Search Console 数据给出分级问题。"
